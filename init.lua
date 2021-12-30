@@ -13,6 +13,11 @@ obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/selectWindow.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
+-- things to configure
+
+obj.rowsToDisplay = 14 -- how many rows to display in the chooser
+
+
 -- for debugging purposes
 function obj:print_table(t, f)
    for i,v in ipairs(t) do
@@ -124,10 +129,14 @@ theWindows:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
 theWindows:subscribe(hs.window.filter.windowFocused, callback_window_created)
 
 
-function obj:list_window_choices()
+function obj:list_window_choices(onlyCurrentApp)
    local windowChoices = {}
+   local currentWin = hs.window.focusedWindow()
+   local currentApp = currentWin:application()
+   print("\nstarting to populate")
+   print(currentApp)
    for i,w in ipairs(obj.currentWindows) do
-      if w ~= hs.window.focusedWindow() then
+      if w ~= currentWin then
          local app = w:application()
          local appImage = nil
          local appName  = '(none)'
@@ -135,12 +144,16 @@ function obj:list_window_choices()
             appName = app:name()
             appImage = hs.image.imageFromAppBundle(w:application():bundleID())
          end
-         table.insert(windowChoices, {
-                         text = w:title() .. "--" .. appName,
-                         subText = appName,
-                         uuid = i,
-                         image = appImage,
-                         win=w})
+         print(appName, currentApp)
+         if (not onlyCurrentApp) or (app == currentApp) then
+            print("inserting...")
+            table.insert(windowChoices, {
+                            text = w:title() .. "--" .. appName,
+                            subText = appName,
+                            uuid = i,
+                            image = appImage,
+                            win=w})
+         end
       end
    end
    return windowChoices;
@@ -156,11 +169,19 @@ local windowChooser = hs.chooser.new(function(choice)
       end
 end)
 
-function obj:selectWindow()
-   local windowChoices = obj:list_window_choices()
+function obj:selectWindow(onlyCurrentApp)
+   local windowChoices = obj:list_window_choices(onlyCurrentApp)
+   if #windowChoices == 0 then
+      if onlyCurrentApp then
+         hs.alert.show("no other window for this application ")
+      else
+         hs.alert.show("no other window available ")
+      end
+      return
+   end
    windowChooser:choices(windowChoices)
    --windowChooser:placeholderText('')
-   windowChooser:rows(12)         
+   windowChooser:rows(obj.rowsToDisplay)         
    windowChooser:query(nil)         
    windowChooser:show()
 end
@@ -169,9 +190,16 @@ function obj:previousWindow()
    return obj.currentWindows[2]
 end
 
+-- select any other window
 hs.hotkey.bind({"alt"}, "b", function()
-      obj:selectWindow()
+      obj:selectWindow(false)
 end)
+
+-- select any window for the same application
+hs.hotkey.bind({"alt", "shift"}, "b", function()
+      obj:selectWindow(true)
+end)
+
 
 return obj
 
