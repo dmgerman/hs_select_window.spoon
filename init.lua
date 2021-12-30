@@ -124,7 +124,7 @@ theWindows:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
 theWindows:subscribe(hs.window.filter.windowFocused, callback_window_created)
 
 
-local function list_window_choices()
+function obj:list_window_choices()
    local windowChoices = {}
    for i,w in ipairs(obj.currentWindows) do
       if w ~= hs.window.focusedWindow() then
@@ -156,14 +156,21 @@ local windowChooser = hs.chooser.new(function(choice)
       end
 end)
 
+function obj:selectWindow()
+   local windowChoices = list_window_choices()
+   windowChooser:choices(windowChoices)
+   --windowChooser:placeholderText('')
+   windowChooser:rows(12)         
+   windowChooser:query(nil)         
+   windowChooser:show()
+end
+
+function obj:previousWindow()
+   return obj.currentWindows[2]
+end
 
 hs.hotkey.bind({"alt"}, "b", function()
-      local windowChoices = list_window_choices()
-      windowChooser:choices(windowChoices)
-      --windowChooser:placeholderText('')
-      windowChooser:rows(12)         
-      windowChooser:query(nil)         
-      windowChooser:show()
+      obj:selectWindow()
 end)
 
 return obj
