@@ -157,7 +157,7 @@ local windowChooser = hs.chooser.new(function(choice)
 end)
 
 function obj:selectWindow()
-   local windowChoices = list_window_choices()
+   local windowChoices = obj:list_window_choices()
    windowChooser:choices(windowChoices)
    --windowChooser:placeholderText('')
    windowChooser:rows(12)         
