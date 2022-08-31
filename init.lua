@@ -92,9 +92,9 @@ local function callback_window_created(w, appName, event)
 
    if event == "windowDestroyed" then
 --      print("deleting from windows-----------------", w)
-      if w then
+--      if w then
 --         print("destroying window" .. w:title())
-      end
+--      end
       for i,v in ipairs(obj.currentWindows) do
          if v == w then
             table.remove(obj.currentWindows, i)
@@ -107,18 +107,18 @@ local function callback_window_created(w, appName, event)
       return
    end
    if event == "windowCreated" then
-      if w then
-         print("creating window" .. w:title())
-      end
+--      if w then
+--         print("creating window" .. w:title())
+--      end
 --      print("inserting into windows.........", w)
       table.insert(obj.currentWindows, 1, w)
       return
    end
    if event == "windowFocused" then
       --otherwise is equivalent to delete and then create
-      if w then
+--      if w then
 --         print("Focusing window" .. w:title())
-      end
+--      end
       callback_window_created(w, appName, "windowDestroyed")
       callback_window_created(w, appName, "windowCreated")
 --      obj:print_table0(obj.currentWindows)
@@ -144,7 +144,7 @@ function obj:list_window_choices(onlyCurrentApp)
             appName = app:name()
             appImage = hs.image.imageFromAppBundle(w:application():bundleID())
          end
-         print(appName, currentApp)
+         print("To insert",appName, currentApp)
          if (not onlyCurrentApp) or (app == currentApp) then
             print("inserting...")
             table.insert(windowChoices, {
@@ -160,7 +160,10 @@ function obj:list_window_choices(onlyCurrentApp)
 end
 
 local windowChooser = hs.chooser.new(function(choice)
-      if not choice then hs.alert.show("Nothing to focus"); return end
+      if not choice then
+         hs.alert.show("Nothing to focus");
+         return
+      end
       local v = choice["win"]
       if v then
          v:focus()
