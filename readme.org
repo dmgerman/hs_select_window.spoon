@@ -36,7 +36,7 @@ type ema
 
 and you get
 
-[[./screenshot-2.png]]
+[[./screenshot-3.png]]
 
 type return and you are sent to the top window
 
