@@ -1,0 +1,68 @@
+#+STARTUP: overview
+#+TITLE: Example 
+# make by default the result of a block its standard output
+#
+#+SEQ_TODO: TODO(t) NEXT(n) WAITING(w) SOMEDAY(s) PROJ(p) | DONE(d) CANCELLED(c) APPT(a)
+#
+#+PROPERTY: header-args         :results output
+# i like to be pedantic
+#+PROPERTY: header-args:C       :main no :flags -std=c99 -Wall --pedantic -Werror
+#  use C+++ instead of C++ (L+ means add arguments to language L)
+#+PROPERTY: header-args:C+++    :main no :flags -std=c++17 -Wall --pedantic -Werror
+# specify the default database
+# result:   guarantees the result is typeset as a table
+# colnames: orgmode does not insert column names, force it to do it
+#+PROPERTY: header-args:sqlite  :db /tmp/rip.db :colnames yes :results  table
+# make sure that ^ and _ do not get interpreted, since they are commonly used
+# in programming (specially _)
+#+PROPERTY: header-args:sql   :engine postgresql  :cmdline -h localhost -p 54321  imdb :colnames yes :results  table
+#+PROPERTY: header-args:python   :results output
+#+PROPERTY: header-args:scala    :results output
+#+PROPERTY: header-args:R    :results output
+#+OPTIONS: ^:nil
+
+* Purpose:
+
+- jump to any window by selecting part of its name or its application
+- windows are listed in the order they have been active (from most recent)
+
+* How to  install
+
+I assume you have installed hammerspoon and you have a ~/.hammerspoon/init.lua file
+
+The easiest way is to clone this repository inside your .hammerspoon directory:
+
+#+begin_src bash   :exports both
+cd ~/.hammerspoon/Spoons
+git clone https://github.com/dmgerman/hs_select_window.spoon.git
+#+end_src
+
+This should create a directory called 
+~/.hammerspoon/Spoons/hs_select_window.spoon with an init.lua file inside
+
+Then modify your ~/.hammerspoon/init.lua file and add the following:
+
+#+begin_src lua   :exports both
+hs.loadSpoon("hs_select_window")
+#+end_src
+
+* How to use
+
+This spoon binds the keys:
+
+- option-b:  display a list of all windows
+- shift-option-b: display list of windows of the current application
+
+Use either one to select and activate any window
+
+Note that the current window does not appear in the list of windows.
+
+* To be done
+
+- create a function to bind keys so no need to modify the source code
+- add functionality to display only windows in the current workspace
+
+* Known bugs
+
+- If you have two different instances of the same application running, the spoon will only track one instance. This is a problem in hammerspoon and the bug has been reported.
+
