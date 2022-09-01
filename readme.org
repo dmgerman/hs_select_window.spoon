@@ -25,6 +25,21 @@
 
 - jump to any window by selecting part of its name or its application
 - windows are listed in the order they have been active (from most recent)
+- each window is listed by window title and application name
+- supports incremental search
+
+* Example
+
+[[./screenshot.png]]  
+  
+type ema
+
+and you get
+
+[[./screenshot-2.png]]
+
+type return and you are sent to the top window
+
 
 * How to  install
 
