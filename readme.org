@@ -1,9 +1,7 @@
 #+STARTUP: overview
 #+TITLE: Example 
 # make by default the result of a block its standard output
-#
 #+SEQ_TODO: TODO(t) NEXT(n) WAITING(w) SOMEDAY(s) PROJ(p) | DONE(d) CANCELLED(c) APPT(a)
-#
 #+PROPERTY: header-args         :results output
 # i like to be pedantic
 #+PROPERTY: header-args:C       :main no :flags -std=c99 -Wall --pedantic -Werror
@@ -20,6 +18,14 @@
 #+PROPERTY: header-args:scala    :results output
 #+PROPERTY: header-args:R    :results output
 #+OPTIONS: ^:nil
+
+* Table of contents :TOC:
+- [[#purpose][Purpose:]]
+- [[#example][Example]]
+- [[#how-to--install][How to  install]]
+- [[#how-to-use][How to use]]
+- [[#to-be-done][To be done]]
+- [[#known-bugs][Known bugs]]
 
 * Purpose:
 
