@@ -1,5 +1,4 @@
 #+STARTUP: overview
-#+TITLE: Example 
 # make by default the result of a block its standard output
 #+SEQ_TODO: TODO(t) NEXT(n) WAITING(w) SOMEDAY(s) PROJ(p) | DONE(d) CANCELLED(c) APPT(a)
 #+PROPERTY: header-args         :results output
