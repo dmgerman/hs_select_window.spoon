@@ -64,6 +64,13 @@ Then modify your ~/.hammerspoon/init.lua file and add the following:
 
 #+begin_src lua   :exports both
 hs.loadSpoon("hs_select_window")
+
+-- customize bindings to your preference
+local SWbindings = {
+   all_windows =  { {"alt"}, "b"},
+   app_windows =  { {"alt", "shift"}, "b"}
+}   
+spoon.hs_select_window:bindHotkeys(SWbindings)
 #+end_src
 
 * How to use
@@ -73,7 +80,8 @@ This spoon binds the keys:
 - option-b:  display a list of all windows
 - shift-option-b: display list of windows of the current application
 
-Use either one to select and activate any window
+Use either one to select and activate any window. 
+
 
 Note that the current window does not appear in the list of windows.
 

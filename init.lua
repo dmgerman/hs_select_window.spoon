@@ -193,15 +193,14 @@ function obj:previousWindow()
    return obj.currentWindows[2]
 end
 
--- select any other window
-hs.hotkey.bind({"alt"}, "b", function()
-      obj:selectWindow(false)
-end)
+function obj:bindHotkeys(mapping)
+   local def = {
+      all_windows = function() self:selectWindow(false) end,
+      app_windows = function() self:selectWindow(true) end
+   }
+   hs.spoons.bindHotkeysToSpec(def, mapping)
+end
 
--- select any window for the same application
-hs.hotkey.bind({"alt", "shift"}, "b", function()
-      obj:selectWindow(true)
-end)
 
 
 return obj
