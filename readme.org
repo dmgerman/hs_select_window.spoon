@@ -87,7 +87,6 @@ Note that the current window does not appear in the list of windows.
 
 * To be done
 
-- create a function to bind keys so no need to modify the source code
 - add functionality to display only windows in the current workspace
 
 * Known bugs
