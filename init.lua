@@ -133,8 +133,8 @@ function obj:list_window_choices(onlyCurrentApp)
    local windowChoices = {}
    local currentWin = hs.window.focusedWindow()
    local currentApp = currentWin:application()
-   print("\nstarting to populate")
-   print(currentApp)
+--  print("\nstarting to populate")
+--   print(currentApp)
    for i,w in ipairs(obj.currentWindows) do
       if w ~= currentWin then
          local app = w:application()
@@ -144,9 +144,9 @@ function obj:list_window_choices(onlyCurrentApp)
             appName = app:name()
             appImage = hs.image.imageFromAppBundle(w:application():bundleID())
          end
-         print("To insert",appName, currentApp)
+--         print("To insert",appName, currentApp)
          if (not onlyCurrentApp) or (app == currentApp) then
-            print("inserting...")
+--            print("inserting...")
             table.insert(windowChoices, {
                             text = w:title() .. "--" .. appName,
                             subText = appName,
