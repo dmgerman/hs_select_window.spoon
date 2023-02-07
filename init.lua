@@ -129,9 +129,20 @@ theWindows:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
 theWindows:subscribe(hs.window.filter.windowFocused, callback_window_created)
 
 
-function obj:list_window_choices(onlyCurrentApp)
+function obj:count_app_windows(app)
+   local count = 0
+   for i,w in ipairs(obj.currentWindows) do
+      local app = w:application()
+      if  (app == currentApp) then
+          count = count + 1
+      end
+   end
+   return count
+end
+
+
+function obj:list_window_choices(onlyCurrentApp, currentWin)
    local windowChoices = {}
-   local currentWin = hs.window.focusedWindow()
    local currentApp = currentWin:application()
 --  print("\nstarting to populate")
 --   print(currentApp)
@@ -144,7 +155,6 @@ function obj:list_window_choices(onlyCurrentApp)
             appName = app:name()
             appImage = hs.image.imageFromAppBundle(w:application():bundleID())
          end
---         print("To insert",appName, currentApp)
          if (not onlyCurrentApp) or (app == currentApp) then
 --            print("inserting...")
             table.insert(windowChoices, {
@@ -173,20 +183,33 @@ local windowChooser = hs.chooser.new(function(choice)
 end)
 
 function obj:selectWindow(onlyCurrentApp)
-   local windowChoices = obj:list_window_choices(onlyCurrentApp)
-   if #windowChoices == 0 then
-      if onlyCurrentApp then
+   print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
+   -- move it before... because the creation of the list of options sometimes is too slow
+   -- that the window is not created before the user starts typing
+   -- we need to pass the save the current window before hammerspoon becomes the active one
+   local currentWin = hs.window.focusedWindow()
+
+   -- check if we have other windows
+   if onlyCurrentApp then
+      local nWindows = obj:count_app_windows(currentWin:application())
+      if nWindows == 0 then
          hs.alert.show("no other window for this application ")
-      else
-         hs.alert.show("no other window available ")
+         return
       end
+   end       
+   if #obj.currentWindows == 0 then
+      hs.alert.show("no other window available ")
       return
    end
+
+   -- show it, so we start catching keyboard events
+   windowChooser:show()
+
+   -- then fill fill it and let it do its thing
+   local windowChoices = obj:list_window_choices(onlyCurrentApp, currentWin)
    windowChooser:choices(windowChoices)
-   --windowChooser:placeholderText('')
    windowChooser:rows(obj.rowsToDisplay)         
    windowChooser:query(nil)         
-   windowChooser:show()
 end
 
 function obj:previousWindow()
