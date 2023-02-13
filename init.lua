@@ -177,6 +177,8 @@ local windowChooser = hs.chooser.new(function(choice)
       local v = choice["win"]
       if v then
          v:focus()
+         -- this fixes a bug when the application is a different screen 
+         v:application():activate()
       else
          hs.alert.show("unable fo focus " .. name)
       end
