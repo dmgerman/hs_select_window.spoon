@@ -129,7 +129,7 @@ theWindows:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
 theWindows:subscribe(hs.window.filter.windowFocused, callback_window_created)
 
 
-function obj:count_app_windows(app)
+function obj:count_app_windows(currentApp)
    local count = 0
    for i,w in ipairs(obj.currentWindows) do
       local app = w:application()
