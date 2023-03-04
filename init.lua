@@ -10,7 +10,7 @@ obj.__index = obj
 obj.name = "selectWindow"
 obj.version = "0.1"
 obj.author = "dmg <dmg@turingmachine.org>"
-obj.homepage = "https://github.com/dmgerman/selectWindow.spoon"
+obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
 -- things to configure
@@ -48,7 +48,7 @@ for i,v in ipairs(theWindows:getWindows()) do
 end
 
 function obj:find_window_by_title(t)
-   -- find a window by title. 
+   -- find a window by title.
    for i,v in ipairs(obj.currentWindows) do
       if string.find(v:title(), t) then
          return v
@@ -177,7 +177,7 @@ local windowChooser = hs.chooser.new(function(choice)
       local v = choice["win"]
       if v then
          v:focus()
-         -- this fixes a bug when the application is a different screen 
+         -- this fixes a bug when the application is a different screen
          v:application():activate()
       else
          hs.alert.show("unable fo focus " .. name)
@@ -198,7 +198,7 @@ function obj:selectWindow(onlyCurrentApp)
          hs.alert.show("no other window for this application ")
          return
       end
-   end       
+   end
    if #obj.currentWindows == 0 then
       hs.alert.show("no other window available ")
       return
@@ -210,8 +210,8 @@ function obj:selectWindow(onlyCurrentApp)
    -- then fill fill it and let it do its thing
    local windowChoices = obj:list_window_choices(onlyCurrentApp, currentWin)
    windowChooser:choices(windowChoices)
-   windowChooser:rows(obj.rowsToDisplay)         
-   windowChooser:query(nil)         
+   windowChooser:rows(obj.rowsToDisplay)
+   windowChooser:query(nil)
 end
 
 function obj:previousWindow()
