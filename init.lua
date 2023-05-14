@@ -17,7 +17,6 @@ obj.license = "MIT - https://opensource.org/licenses/MIT"
 
 obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
-
 -- for debugging purposes
 function obj:print_table(t, f)
    for i,v in ipairs(t) do
@@ -106,6 +105,7 @@ local function callback_window_created(w, appName, event)
 --      print("Not found ............ :()", w)
       return
    end
+   
    if event == "windowCreated" then
 --      if w then
 --         print("creating window" .. w:title())
@@ -169,6 +169,17 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
    return windowChoices;
 end
 
+function obj:windowActivate(w)
+  if w then
+    w:focus()
+    -- this fixes a bug when the application is a different screen 
+    w:application():activate()
+  else
+    hs.alert.show("unable fo focus " .. name)
+  end
+
+end  
+
 local windowChooser = hs.chooser.new(function(choice)
       if not choice then
          hs.alert.show("Nothing to focus");
@@ -176,11 +187,9 @@ local windowChooser = hs.chooser.new(function(choice)
       end
       local v = choice["win"]
       if v then
-         v:focus()
-         -- this fixes a bug when the application is a different screen 
-         v:application():activate()
+        obj:windowActivate(v)
       else
-         hs.alert.show("unable fo focus " .. name)
+        hs.alert.show("unable fo focus " .. name)
       end
 end)
 
@@ -216,6 +225,12 @@ end
 
 function obj:previousWindow()
    return obj.currentWindows[2]
+end
+
+function obj:choosePreviousWindow()
+  if obj.currentWindows[2] then
+    obj.currentWindows[2]:focus()
+  end
 end
 
 function obj:bindHotkeys(mapping)
