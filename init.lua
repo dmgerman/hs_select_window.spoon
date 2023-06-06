@@ -8,7 +8,7 @@ obj.__index = obj
 -- metadata
 
 obj.name = "selectWindow"
-obj.version = "0.1"
+obj.version = "0.2"
 obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -180,27 +180,40 @@ function obj:windowActivate(w)
 
 end  
 
-local windowChooser = hs.chooser.new(function(choice)
-      if not choice then
-         hs.alert.show("Nothing to focus");
-         return
-      end
-      local v = choice["win"]
-      if v then
-         v:focus()
-         -- this fixes a bug when the application is a different screen
-         v:application():activate()
-      else
-        hs.alert.show("unable fo focus " .. name)
-      end
-end)
-
-function obj:selectWindow(onlyCurrentApp)
+function obj:selectWindow(onlyCurrentApp, moveToCurrent)
    print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
    -- move it before... because the creation of the list of options sometimes is too slow
    -- that the window is not created before the user starts typing
    -- we need to pass the save the current window before hammerspoon becomes the active one
    local currentWin = hs.window.focusedWindow()
+
+   local windowChooser = hs.chooser.new(function(choice)
+       if not choice then
+         hs.alert.show("Nothing to focus");
+         return
+       end
+       local v = choice["win"]
+       if v then
+         hs.alert.show("doing something, we have a v")
+         print(v)
+         if moveToCurrent then
+           hs.alert.show("move to current")
+           -- we don't want to keep the window maximized
+           -- move to the current space... so we leave that space alone
+           if v:isFullScreen() then
+             v:toggleFullScreen()
+           end
+           hs.spaces.moveWindowToSpace(v,
+                hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen())
+           )
+           v:moveToScreen(mainScreen)
+         end
+         v:focus()
+         v:application():activate()
+       else
+         hs.alert.show("unable fo focus " .. name)
+       end
+   end)
 
    -- check if we have other windows
    if onlyCurrentApp then
@@ -237,8 +250,9 @@ end
 
 function obj:bindHotkeys(mapping)
    local def = {
-      all_windows = function() self:selectWindow(false) end,
-      app_windows = function() self:selectWindow(true) end
+      all_windows         = function() self:selectWindow(false,false) end,
+      all_windows_current = function() self:selectWindow(false,true) end,
+      app_windows         = function() self:selectWindow(true, false) end
    }
    hs.spoons.bindHotkeysToSpec(def, mapping)
 end
