@@ -27,8 +27,12 @@ end
 -- for debugging purposes
 
 function obj:print_windows()
-   function w_info(w)
-      return w:title() .. w:application():name()
+  function w_info(w)
+     return string.format("title [%s] [%s] [%s]",
+       w:title(),
+       w:application():name(),
+       w:application():bundleID()
+     )
    end
    obj:print_table(hs.window.visibleWindows(), w_info)
 end
