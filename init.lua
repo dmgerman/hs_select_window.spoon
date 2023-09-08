@@ -198,7 +198,7 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrent)
        end
        local v = choice["win"]
        if v then
-         hs.alert.show("doing something, we have a v")
+--         hs.alert.show("doing something, we have a v")
          print(v)
          if moveToCurrent then
            hs.alert.show("move to current")
