@@ -252,6 +252,21 @@ function obj:choosePreviousWindow()
   end
 end
 
+function obj:nextFullScreen()
+  -- find a window by title.
+  for i,v in ipairs(obj.currentWindows) do
+    if v:isFullScreen() then
+      if (obj.currentWindows[1] == v) then
+        print("it is the currentn window")
+      else
+        v:focus()
+        return
+      end
+    end
+  end
+  hs.alert("No next fullscreen window")
+end
+
 function obj:bindHotkeys(mapping)
    local def = {
       all_windows         = function() self:selectWindow(false,false) end,
