@@ -87,6 +87,20 @@ function obj:focus_by_app(appName)
    return nil
 end
 
+function obj:focus_by_app_and_title(appName, title)
+  -- find a window with that application name and jump to it
+  --   print(' [' .. appName ..']')
+  for i,v in ipairs(obj.currentWindows) do
+     print('           [' .. v:application():name() .. ']')
+    if (v:application():name() == appName) and string.find(v:title(), title) then
+      --         print("Focusing window" .. v:title())
+      v:focus()
+      return v
+    end
+  end
+  return nil
+end
+
 
 -- the hammerspoon tracking of windows seems to be broken
 -- we do it ourselves
