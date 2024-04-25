@@ -28,10 +28,10 @@ end
 
 function obj:print_windows()
   function w_info(w)
-     return string.format("title [%s] [%s] [%s]",
-       w:title(),
+     return string.format("[%s] [%s] [%s]",
+       w:application():bundleID(),
        w:application():name(),
-       w:application():bundleID()
+       w:title()
      )
    end
    obj:print_table(hs.window.visibleWindows(), w_info)
@@ -86,6 +86,21 @@ function obj:focus_by_app(appName)
    end
    return nil
 end
+
+function obj:focus_by_bundle_id(bundleID)
+  -- find a window with that application name and jump to it
+  --   print(' [' .. appName ..']')
+  for i,v in ipairs(obj.currentWindows) do
+    --      print('           [' .. v:application():name() .. ']')
+    if string.find(v:application():bundleID(), bundleID) then
+      --         print("Focusing window" .. v:title())
+      v:focus()
+      return v
+    end
+  end
+  return nil
+end
+
 
 function obj:focus_by_app_and_title(appName, title)
   -- find a window with that application name and jump to it
@@ -170,14 +185,17 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
          local appImage = nil
          local appName  = '(none)'
          if app then
-            appName = app:name()
+           appName = app:name()
+           -- add bundle id, to separate windows with same name, but different
+           -- bundleID
+            appBundleId = app:bundleID()
             appImage = hs.image.imageFromAppBundle(w:application():bundleID())
          end
          if (not onlyCurrentApp) or (app == currentApp) then
 --            print("inserting...")
             table.insert(windowChoices, {
                             text = w:title() .. "--" .. appName,
-                            subText = appName,
+                            subText = appBundleId,
                             uuid = i,
                             image = appImage,
                             win=w})
