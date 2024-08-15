@@ -19,9 +19,9 @@ obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
 -- for debugging purposes
 function obj:print_table(t, f)
-   for i,v in ipairs(t) do
-      print(i, f(v))
-   end
+--   for i,v in ipairs(t) do
+--      print(i, f(v))
+--   end
 end
 
 -- for debugging purposes
@@ -106,7 +106,7 @@ function obj:focus_by_app_and_title(appName, title)
   -- find a window with that application name and jump to it
   --   print(' [' .. appName ..']')
   for i,v in ipairs(obj.currentWindows) do
-     print('           [' .. v:application():name() .. ']')
+--     print('           [' .. v:application():name() .. ']')
     if (v:application():name() == appName) and string.find(v:title(), title) then
       --         print("Focusing window" .. v:title())
       v:focus()
@@ -217,7 +217,7 @@ function obj:windowActivate(w)
 end  
 
 function obj:selectWindow(onlyCurrentApp, moveToCurrent)
-   print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
+--   print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
    -- move it before... because the creation of the list of options sometimes is too slow
    -- that the window is not created before the user starts typing
    -- we need to pass the save the current window before hammerspoon becomes the active one
@@ -231,7 +231,7 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrent)
        local v = choice["win"]
        if v then
 --         hs.alert.show("doing something, we have a v")
-         print(v)
+--         print(v)
          if moveToCurrent then
            hs.alert.show("move to current")
            -- we don't want to keep the window maximized
@@ -289,7 +289,8 @@ function obj:nextFullScreen()
   for i,v in ipairs(obj.currentWindows) do
     if v:isFullScreen() then
       if (obj.currentWindows[1] == v) then
-        print("it is the currentn window")
+         --        print("it is the currentn window")
+         -- do nothing
       else
         v:focus()
         return
