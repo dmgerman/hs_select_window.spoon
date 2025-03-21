@@ -202,7 +202,7 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
          end
       end
    end
-   return windowChoices;
+   return windowChoices
 end
 
 function obj:windowActivate(w)
@@ -225,7 +225,7 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrent)
 
    local windowChooser = hs.chooser.new(function(choice)
        if not choice then
-         hs.alert.show("Nothing to focus");
+         -- hs.alert.show("Nothing to focus");
          return
        end
        local v = choice["win"]
@@ -278,9 +278,39 @@ function obj:previousWindow()
    return obj.currentWindows[2]
 end
 
-function obj:choosePreviousWindow()
-  if obj.currentWindows[2] then
-    obj.currentWindows[2]:focus()
+-- find previous window of current application
+function obj:previousAppWindow()
+  local currentWin = hs.window.focusedWindow()
+  local currentApp = currentWin and currentWin:application()
+
+  if not currentApp  then
+     return nil
+  end
+
+  for i, w in ipairs(obj.currentWindows) do
+    if w ~= currentWin and w:application() == currentApp then
+      return w
+    end
+  end
+  return nil
+end
+
+function obj:choosePreviousWindow(onlyCurrentApp, moveToCurrent)
+  local chooseWindow = self:previousWindow()
+  if onlyCurrentApp then
+    chooseWindow = self:previousAppWindow()
+  end
+
+  if chooseWindow then
+    if moveToCurrent then
+      if chooseWindow:isFullScreen() then
+        chooseWindow:toggleFullScreen()
+      end
+      hs.spaces.moveWindowToSpace(chooseWindow, hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen()))
+      chooseWindow:moveToScreen(mainScreen)
+    end
+    chooseWindow:focus()
+    chooseWindow:application():activate()
   end
 end
 
@@ -304,7 +334,10 @@ function obj:bindHotkeys(mapping)
    local def = {
       all_windows         = function() self:selectWindow(false,false) end,
       all_windows_current = function() self:selectWindow(false,true) end,
-      app_windows         = function() self:selectWindow(true, false) end
+      app_windows         = function() self:selectWindow(true, false) end,
+      previous_window         = function() self:choosePreviousWindow(false,false) end,
+      previous_window_current = function() self:choosePreviousWindow(false,true) end,
+      previous_app_window         = function() self:choosePreviousWindow(true, false) end
    }
    hs.spoons.bindHotkeysToSpec(def, mapping)
 end
