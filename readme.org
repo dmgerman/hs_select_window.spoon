@@ -68,7 +68,9 @@ hs.loadSpoon("hs_select_window")
 -- customize bindings to your preference
 local SWbindings = {
    all_windows =  { {"alt"}, "b"},
-   app_windows =  { {"alt", "shift"}, "b"}
+   app_windows =  { {"alt", "shift"}, "b"},
+   previous_window = { {"alt", "shift"}, "tab" },
+   previous_app_window = { {"alt"}, "tab" }
 }   
 spoon.hs_select_window:bindHotkeys(SWbindings)
 #+end_src
