@@ -17,11 +17,24 @@ obj.license = "MIT - https://opensource.org/licenses/MIT"
 
 obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
+-- keep track of hotkeys so we can disable/enable them
+obj.hotkeys = {}
+
 -- for debugging purposes
 function obj:print_table(t, f)
 --   for i,v in ipairs(t) do
 --      print(i, f(v))
 --   end
+end
+
+function obj:hotkeys_enable(enable)
+  for _,v in pairs (obj.hotkeys)do
+    if enable then
+      v:enable()
+    else
+      v:disable()
+    end
+  end
 end
 
 -- for debugging purposes
@@ -253,6 +266,7 @@ end
 
 function obj:selectWindowGeneric(fnListWindows)
    local windowChooser = hs.chooser.new(function(choice)
+       obj:hotkeys_enable(true)
        if not choice then
          hs.alert.show("Nothing to focus");
          return
@@ -284,6 +298,7 @@ function obj:selectWindowGeneric(fnListWindows)
       hs.alert.show("no other window available ")
       return
    end
+   obj:hotkeys_enable(false)
 
    -- show it, so we start catching keyboard events
    windowChooser:show()
@@ -409,7 +424,10 @@ function obj:bindHotkeys(mapping)
       app_windows                   = function() self:selectWindow(true, false) end,
       first_window_per_app          = function() self:selectFirstAppWindow() end
    }
-   hs.spoons.bindHotkeysToSpec(def, mapping)
+   -- do it by hand, so we can keep track of the hotkeys
+   for i,v in pairs (mapping)do
+     obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], def[i])
+   end
 end
 
 
