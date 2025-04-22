@@ -216,7 +216,7 @@ function obj:windowActivate(w)
 
 end  
 
-function obj:selectWindow(onlyCurrentApp, moveToCurrent)
+function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
 --   print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
    -- move it before... because the creation of the list of options sometimes is too slow
    -- that the window is not created before the user starts typing
@@ -232,7 +232,7 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrent)
        if v then
 --         hs.alert.show("doing something, we have a v")
 --         print(v)
-         if moveToCurrent then
+         if moveToCurrentSpace then
            hs.alert.show("move to current")
            -- we don't want to keep the window maximized
            -- move to the current space... so we leave that space alone
@@ -302,9 +302,9 @@ end
 
 function obj:bindHotkeys(mapping)
    local def = {
-      all_windows         = function() self:selectWindow(false,false) end,
-      all_windows_current = function() self:selectWindow(false,true) end,
-      app_windows         = function() self:selectWindow(true, false) end
+      all_windows                   = function() self:selectWindow(false,false) end,
+      all_windows_move_to_current_workspace = function() self:selectWindow(false,true) end,
+      app_windows                   = function() self:selectWindow(true, false) end
    }
    hs.spoons.bindHotkeysToSpec(def, mapping)
 end
