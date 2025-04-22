@@ -205,6 +205,41 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
    return windowChoices;
 end
 
+function obj:list_window_first_choices()
+  local windowChoices = {}
+  local seen = {}
+  local currentWin = hs.window.focusedWindow()
+  local currentApp = currentWin:application()
+  for i,w in ipairs(obj.currentWindows) do
+    local app = w:application()
+    local bundleID = app:bundleID() or app:name()
+    if w ~= currentWin and (not seen[bundleID]) then
+      print("bundleid", bundleID)
+      seen[bundleID] = w
+      local appImage = nil
+      local appName  = '(none)'
+      if app then
+        appName = app:name()
+        -- add bundle id, to separate windows with same name, but different
+        -- bundleID
+        appBundleId = app:bundleID()
+        appImage = hs.image.imageFromAppBundle(w:application():bundleID())
+      end
+      if (not onlyCurrentApp) or (app == currentApp) then
+        --            print("inserting...")
+        table.insert(windowChoices, {
+            text = w:title() .. "--" .. appName,
+            subText = appBundleId,
+            uuid = i,
+            image = appImage,
+            win=w})
+      end
+    end
+  end
+  return windowChoices
+end
+
+
 function obj:windowActivate(w)
   if w then
     w:focus()
@@ -216,11 +251,75 @@ function obj:windowActivate(w)
 
 end  
 
+function obj:selectWindowGeneric(fnListWindows)
+   local windowChooser = hs.chooser.new(function(choice)
+       if not choice then
+         hs.alert.show("Nothing to focus");
+         return
+       end
+       local v = choice["win"]
+       if v then
+--         hs.alert.show("doing something, we have a v")
+--         print(v)
+         if moveToCurrentSpace then
+           hs.alert.show("move to current")
+           -- we don't want to keep the window maximized
+           -- move to the current space... so we leave that space alone
+           if v:isFullScreen() then
+             v:toggleFullScreen()
+           end
+           hs.spaces.moveWindowToSpace(v,
+                hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen())
+           )
+           v:moveToScreen(mainScreen)
+         end
+         v:focus()
+         v:application():activate()
+       else
+         hs.alert.show("unable fo focus " .. name)
+       end
+   end)
+
+   if #obj.currentWindows == 0 then
+      hs.alert.show("no other window available ")
+      return
+   end
+
+   -- show it, so we start catching keyboard events
+   windowChooser:show()
+
+   -- then fill fill it and let it do its thing
+   local windowChoices = fnListWindows()
+   windowChooser:choices(windowChoices)
+   windowChooser:rows(obj.rowsToDisplay)
+   windowChooser:query(nil)
+end
+
 function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
---   print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
-   -- move it before... because the creation of the list of options sometimes is too slow
-   -- that the window is not created before the user starts typing
-   -- we need to pass the save the current window before hammerspoon becomes the active one
+  -- check if we have other windows
+  local currentWin = hs.window.focusedWindow()
+
+  if onlyCurrentApp then
+    local nWindows = obj:count_app_windows(currentWin:application())
+    if nWindows == 0 then
+      hs.alert.show("no other window for this application ")
+      return
+    end
+  end
+
+
+  obj:selectWindowGeneric(function () return obj:list_window_choices(onlyCurrentApp, currentWin) end)
+end
+
+function obj:selectFirstAppWindow()
+  obj:selectWindowGeneric(function () return obj:list_window_first_choices() end)
+end
+
+
+
+function obj:selectApp(moveToCurrentSpace)
+   -- show only first window of a given application
+
    local currentWin = hs.window.focusedWindow()
 
    local windowChooser = hs.chooser.new(function(choice)
@@ -274,6 +373,9 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
    windowChooser:query(nil)
 end
 
+
+
+
 function obj:previousWindow()
    return obj.currentWindows[2]
 end
@@ -304,7 +406,8 @@ function obj:bindHotkeys(mapping)
    local def = {
       all_windows                   = function() self:selectWindow(false,false) end,
       all_windows_move_to_current_workspace = function() self:selectWindow(false,true) end,
-      app_windows                   = function() self:selectWindow(true, false) end
+      app_windows                   = function() self:selectWindow(true, false) end,
+      first_window_per_app          = function() self:selectFirstAppWindow() end
    }
    hs.spoons.bindHotkeysToSpec(def, mapping)
 end
