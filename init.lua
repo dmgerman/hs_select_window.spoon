@@ -218,39 +218,6 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
    return windowChoices;
 end
 
-function obj:list_window_first_choices()
-  local windowChoices = {}
-  local seen = {}
-  local currentWin = hs.window.focusedWindow()
-  local currentApp = currentWin:application()
-  for i,w in ipairs(obj.currentWindows) do
-    local app = w:application()
-    local bundleID = app:bundleID() or app:name()
-    if w ~= currentWin and (not seen[bundleID]) then
-      print("bundleid", bundleID)
-      seen[bundleID] = w
-      local appImage = nil
-      local appName  = '(none)'
-      if app then
-        appName = app:name()
-        -- add bundle id, to separate windows with same name, but different
-        -- bundleID
-        appBundleId = app:bundleID()
-        appImage = hs.image.imageFromAppBundle(w:application():bundleID())
-      end
-      if (not onlyCurrentApp) or (app == currentApp) then
-        --            print("inserting...")
-        table.insert(windowChoices, {
-            text = w:title() .. "--" .. appName,
-            subText = appBundleId,
-            uuid = i,
-            image = appImage,
-            win=w})
-      end
-    end
-  end
-  return windowChoices
-end
 
 
 function obj:windowActivate(w)
@@ -327,7 +294,42 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
 end
 
 function obj:selectFirstAppWindow()
-  obj:selectWindowGeneric(function () return obj:list_window_first_choices() end)
+  local currentWin = hs.window.focusedWindow()
+  local currentApp = currentWin:application()
+  local currentBundleID = currentApp:bundleID() or currentApp:name()
+
+  function list_window_first_choices()
+    local windowChoices = {}
+    local seen = {}
+    for i,w in ipairs(obj.currentWindows) do
+      local app = w:application()
+      local bundleID = app:bundleID() or app:name()
+      if bundleID ~= currentBundleID and (not seen[bundleID]) then
+        seen[bundleID] = w
+        local appImage = nil
+        local appName  = '(none)'
+        if app then
+          appName = app:name()
+          -- add bundle id, to separate windows with same name, but different
+          -- bundleID
+          appBundleId = app:bundleID()
+          appImage = hs.image.imageFromAppBundle(w:application():bundleID())
+        end
+        if (not onlyCurrentApp) or (app == currentApp) then
+          --            print("inserting...")
+          table.insert(windowChoices, {
+              text = w:title() .. "--" .. appName,
+              subText = appBundleId,
+              uuid = i,
+              image = appImage,
+              win=w})
+        end
+      end
+    end
+    return windowChoices
+  end
+
+  obj:selectWindowGeneric(list_window_first_choices)
 end
 
 
