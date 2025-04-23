@@ -265,13 +265,19 @@ function obj:selectWindowGeneric(fnListWindows)
       hs.alert.show("no other window available ")
       return
    end
+   -- disable the hotkeys so we don't recursively show it
    obj:hotkeys_enable(false)
-
    -- show it, so we start catching keyboard events
    windowChooser:show()
 
    -- then fill fill it and let it do its thing
    local windowChoices = fnListWindows()
+   if #windowChoices == 0 then
+     hs.alert.show("There are no other windows to select.")
+     windowChooser:hide()
+     return
+   end
+
    windowChooser:choices(windowChoices)
    windowChooser:rows(obj.rowsToDisplay)
    windowChooser:query(nil)
@@ -283,14 +289,15 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
 
   if onlyCurrentApp then
     local nWindows = obj:count_app_windows(currentWin:application())
-    if nWindows == 0 then
+    if nWindows <= 1 then
       hs.alert.show("no other window for this application ")
       return
     end
   end
 
-
-  obj:selectWindowGeneric(function () return obj:list_window_choices(onlyCurrentApp, currentWin) end)
+  obj:selectWindowGeneric(
+    function () return obj:list_window_choices(onlyCurrentApp, currentWin) end
+  )
 end
 
 function obj:selectFirstAppWindow()
