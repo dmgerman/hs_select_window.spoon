@@ -452,8 +452,6 @@ function obj:leave_chooser(chooser)
   -- and enable/disable whatever is necessary when 
   -- the chooser returns
 
-  print("Leaving chooser")
-
   obj.trackChooser =nil
   obj.trackPrevWindow = nil
   if obj.overlay then
@@ -462,12 +460,9 @@ function obj:leave_chooser(chooser)
   end
   obj.imageCache = {}
 
-  print("Leaving chooser 2")
   obj.modalKeys:exit()
 
 --  theWindows:resume()
-
-  print("Leaving chooser 3")
 
   obj:hotkeys_enable(true)
 
