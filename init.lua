@@ -28,6 +28,7 @@ obj.displayDelay = 0.2
 
 -- keep track of hotkeys so we can disable/enable them
 obj.hotkeys = {}
+obj.modalKeys = hs.hotkey.modal.new()
 
 -- 
 obj.trackChooser = nil    -- timer callback to track the chooser selection
@@ -36,6 +37,8 @@ obj.trackPrevWindow = nil -- previous window shown in the chooser, so we don't u
 obj.imageCache = {}       -- cache images created... since it is the slowest part
 obj.overlay = nil         -- keep track of the snapshop being displayed
 obj.overlayHeightRatio = 0.4 -- ratio of the screen to use for the overlay
+
+
 
 
 -- for debugging purposes
@@ -438,6 +441,10 @@ function obj:enter_chooser(windowChooser)
   obj.imageCache = {}
 
   windowChooser:show()
+
+  obj.modalKeys:enter()
+
+
 end
 
 function obj:leave_chooser(chooser)
@@ -456,6 +463,7 @@ function obj:leave_chooser(chooser)
   obj.imageCache = {}
 
   print("Leaving chooser 2")
+  obj.modalKeys:exit()
 
 --  theWindows:resume()
 
@@ -596,7 +604,17 @@ function obj:bindHotkeys(mapping)
   -- do it by hand, so we can keep track of the hotkeys
   for i,v in pairs (mapping)do
     obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], def[i])
+    obj.modalKeys:bind(v[1], v[2], function()
+        hs.eventtap.keyStroke({"ctrl"}, "n")
+    end)
+-- I am just going to assume that nobody is going to use shift to call the function
+    local ks = v[1]
+    ks[#ks+1] = "shift"
+    obj.modalKeys:bind(ks, v[2], function()
+        hs.eventtap.keyStroke({"ctrl"}, "p")
+    end)
   end
+
 end
 
 
