@@ -34,8 +34,8 @@ obj.trackChooser = nil    -- timer callback to track the chooser selection
 obj.trackPrevWindow = nil -- previous window shown in the chooser, so we don't update
                           -- unnecessarily
 obj.imageCache = {}       -- cache images created... since it is the slowest part
-obj.overlay = nil
-
+obj.overlay = nil         -- keep track of the snapshop being displayed
+obj.overlayHeightRatio = 0.4 -- ratio of the screen to use for the overlay
 
 
 -- for debugging purposes
@@ -521,7 +521,7 @@ function obj:showImageOverlay(image)
 
   -- if necessary, resize image to fit a reasonable overlay area 
   local origSize = image:size()
-  local h = screenFrame.h /2
+  local h = screenFrame.h * obj.overlayHeightRatio
   local newSize = nil
   if h < origSize.h then
     local scale = h / origSize.h
