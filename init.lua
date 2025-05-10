@@ -429,7 +429,7 @@ function obj:enter_chooser(windowChooser)
   -- and enable/disable whatever is necessary when in the
   -- chooser
 
-  theWindows:pause()
+--  theWindows:pause()
   obj:hotkeys_enable(false)
   
 
@@ -445,6 +445,8 @@ function obj:leave_chooser(chooser)
   -- and enable/disable whatever is necessary when 
   -- the chooser returns
 
+  print("Leaving chooser")
+
   obj.trackChooser =nil
   obj.trackPrevWindow = nil
   if obj.overlay then
@@ -453,7 +455,12 @@ function obj:leave_chooser(chooser)
   end
   obj.imageCache = {}
 
-  theWindows:resume()
+  print("Leaving chooser 2")
+
+--  theWindows:resume()
+
+  print("Leaving chooser 3")
+
   obj:hotkeys_enable(true)
 
 end
@@ -555,18 +562,20 @@ function display_currently_selected_window_callback()
 
     -- only update if the window is different than the previous one
 
-    local wid = selectedWin:id()
+    if selectedWin then
+      local wid = selectedWin:id()
 
-    if wid ~= obj.PrevWindow then
-      -- keep a cache of the images
-      -- this cache is regenerated at every invocation
-      local wImage = obj.imageCache[wid]
-      if not wImage then
-        wImage = obj:captureWindowSnapshot(selectedWin)
-        obj.imageCache[wid] = wImage
+      if wid ~= obj.PrevWindow then
+        -- keep a cache of the images
+        -- this cache is regenerated at every invocation
+        local wImage = obj.imageCache[wid]
+        if not wImage then
+          wImage = obj:captureWindowSnapshot(selectedWin)
+          obj.imageCache[wid] = wImage
+        end
+        obj:showImageOverlay(wImage)
+        obj.PrevWindow = wid
       end
-      obj:showImageOverlay(wImage)
-      obj.PrevWindow = wid
     end
   end
 end
