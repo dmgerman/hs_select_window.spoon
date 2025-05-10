@@ -13,12 +13,30 @@ obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
 
+
 -- things to configure
 
 obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
+
+-- do we show the current selected window on the right corner of the screen?
+obj.showCurrentlySelectedWindow = true
+
+-- delay for the timer... it only refreshes at this interval
+obj.displayDelay = 0.2
+
+
 -- keep track of hotkeys so we can disable/enable them
 obj.hotkeys = {}
+
+-- 
+obj.trackChooser = nil    -- timer callback to track the chooser selection
+obj.trackPrevWindow = nil -- previous window shown in the chooser, so we don't update
+                          -- unnecessarily
+obj.imageCache = {}       -- cache images created... since it is the slowest part
+obj.overlay = nil
+
+
 
 -- for debugging purposes
 function obj:print_table(t, f)
@@ -195,22 +213,23 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
    for i,w in ipairs(obj.currentWindows) do
       if w ~= currentWin then
          local app = w:application()
-         local appImage = nil
          local appName  = '(none)'
          if app then
            appName = app:name()
            -- add bundle id, to separate windows with same name, but different
            -- bundleID
             appBundleId = app:bundleID()
-            appImage = hs.image.imageFromAppBundle(w:application():bundleID())
-         end
+               end
          if (not onlyCurrentApp) or (app == currentApp) then
 --            print("inserting...")
+           local windowImage= nil
+           local appImage = hs.image.imageFromAppBundle(w:application():bundleID())
             table.insert(windowChoices, {
                             text = w:title() .. "--" .. appName,
                             subText = appBundleId,
                             uuid = i,
                             image = appImage,
+                            wImage = nil, -- populated by display_currently_selected_window_callback
                             win=w})
          end
       end
@@ -233,9 +252,9 @@ end
 
 function obj:selectWindowGeneric(fnListWindows)
    local windowChooser = hs.chooser.new(function(choice)
-       obj:hotkeys_enable(true)
+       obj:leave_chooser()
+
        if not choice then
-         hs.alert.show("Nothing to focus");
          return
        end
        local v = choice["win"]
@@ -265,16 +284,24 @@ function obj:selectWindowGeneric(fnListWindows)
       hs.alert.show("no other window available ")
       return
    end
-   -- disable the hotkeys so we don't recursively show it
-   obj:hotkeys_enable(false)
    -- show it, so we start catching keyboard events
-   windowChooser:show()
+   obj:enter_chooser(windowChooser)
+
 
    -- then fill fill it and let it do its thing
    local windowChoices = fnListWindows()
    if #windowChoices == 0 then
      hs.alert.show("There are no other windows to select.")
      windowChooser:hide()
+     return
+   end
+   if #windowChoices == 1 then
+     local v = windowChoices[1]["win"]
+     print("activating 2:", hs.inspect(windowChoices))
+     print("activating  :", hs.inspect(v))
+     windowChooser:hide()
+     v:focus()
+     v:application():activate()
      return
    end
 
@@ -310,25 +337,25 @@ function obj:selectFirstAppWindow()
     local seen = {}
     for i,w in ipairs(obj.currentWindows) do
       local app = w:application()
-      local bundleID = app:bundleID() or app:name()
+      local appName = (app and app:name()) or '(none)'
+      local bundleID = (app and app:bundleID()) or appnName
+      local appImage = nil
       if bundleID ~= currentBundleID and (not seen[bundleID]) then
         seen[bundleID] = w
-        local appImage = nil
-        local appName  = '(none)'
-        if app then
-          appName = app:name()
-          -- add bundle id, to separate windows with same name, but different
-          -- bundleID
-          appBundleId = app:bundleID()
-          appImage = hs.image.imageFromAppBundle(w:application():bundleID())
-        end
+
         if (not onlyCurrentApp) or (app == currentApp) then
           --            print("inserting...")
+          if app then
+            -- add bundle id, to separate windows with same name, but different
+            -- bundleID
+            appImage = hs.image.imageFromAppBundle(bundleID)
+          end
           table.insert(windowChoices, {
               text = w:title() .. "--" .. appName,
-              subText = appBundleId,
+              subText = bundleID,
               uuid = i,
               image = appImage,
+              wImage = nil,
               win=w})
         end
       end
@@ -347,6 +374,7 @@ function obj:selectApp(moveToCurrentSpace)
    local currentWin = hs.window.focusedWindow()
 
    local windowChooser = hs.chooser.new(function(choice)
+       obj:leave_chooser()
        if not choice then
          hs.alert.show("Nothing to focus");
          return
@@ -387,10 +415,8 @@ function obj:selectApp(moveToCurrentSpace)
       return
    end
 
-   -- show it, so we start catching keyboard events
-   windowChooser:show()
-
-   -- then fill fill it and let it do its thing
+   obj:enter_chooser(windowChooser)
+   
    local windowChoices = obj:list_window_choices(onlyCurrentApp, currentWin)
    windowChooser:choices(windowChoices)
    windowChooser:rows(obj.rowsToDisplay)
@@ -398,12 +424,46 @@ function obj:selectApp(moveToCurrentSpace)
 end
 
 
+function obj:enter_chooser(windowChooser)
+  -- show the chooser 
+  -- and enable/disable whatever is necessary when in the
+  -- chooser
+
+  theWindows:pause()
+  obj:hotkeys_enable(false)
+  
+
+  obj.trackPrevWindow = nil
+  obj.trackChooser = windowChooser
+  obj.imageCache = {}
+
+  windowChooser:show()
+end
+
+function obj:leave_chooser(chooser)
+  -- exiting the chooser
+  -- and enable/disable whatever is necessary when 
+  -- the chooser returns
+
+  obj.trackChooser =nil
+  obj.trackPrevWindow = nil
+  if obj.overlay then
+    obj.overlay:delete()
+    obj.overlay = nil
+  end
+  obj.imageCache = {}
+
+  theWindows:resume()
+  obj:hotkeys_enable(true)
+
+end
 
 
 function obj:previousWindow()
    return obj.currentWindows[2]
 end
 
+-- simple function to be able to go back to the previous window
 function obj:choosePreviousWindow()
   if obj.currentWindows[2] then
     obj.currentWindows[2]:focus()
@@ -426,17 +486,108 @@ function obj:nextFullScreen()
   hs.alert("No next fullscreen window")
 end
 
+function obj:captureWindowSnapshot(window)
+  -- Get the window's ID
+  if not window then
+    return nil
+  end
+  local windowID = window:id()
+
+  -- Define the output path for the screenshot
+  local outputPath = "/tmp/window_snapshot_" .. windowID .. ".png"
+
+  -- Use screencapture with the window ID to capture the window
+  local command = "screencapture -x -l" .. windowID .. " " .. outputPath
+  hs.execute(command)
+
+  -- Load the image from the file into an hs.image object
+  local image = hs.image.imageFromPath(outputPath)
+
+  return image
+end
+
+
+function obj:showImageOverlay(image)
+  -- show the image overlay in the bottom right of the screen
+  if obj.overlay then
+    obj.overlay:delete()
+  end
+  if not image then
+    print("no image provided")
+    return
+  end
+  -- Get screen dimensions (main screen in this case)
+  local screenFrame = hs.screen.mainScreen():frame()
+
+  -- if necessary, resize image to fit a reasonable overlay area 
+  local origSize = image:size()
+  local h = screenFrame.h /2
+  local newSize = nil
+  if h < origSize.h then
+    local scale = h / origSize.h
+    newSize = hs.geometry.size(origSize.w * scale, h)
+  else
+    newSize = origSize
+  end
+
+  -- Position the overlay in the bottom-right corner (adjust as needed)
+  local posX = screenFrame.x + screenFrame.w - newSize.w - 20
+  local posY = screenFrame.y + screenFrame.h - newSize.h - 40
+
+  -- Create the drawing
+  obj.overlay = hs.drawing.image(hs.geometry.rect(posX, posY, newSize.w, newSize.h), image)
+
+  -- Customize appearance
+  obj.overlay:setLevel(hs.drawing.windowLevels.overlay)
+  obj.overlay:setAlpha(0.9)
+  obj.overlay:show()
+end
+
+-- call back to display the snapshot of the currently
+-- active window
+function display_currently_selected_window_callback()
+  
+  if obj.trackChooser and obj.trackChooser:isVisible() then
+    
+    -- only operate if the track is visible
+
+    local selectedWin = obj.trackChooser:selectedRowContents()["win"]
+
+    -- only update if the window is different than the previous one
+
+    local wid = selectedWin:id()
+
+    if wid ~= obj.PrevWindow then
+      -- keep a cache of the images
+      -- this cache is regenerated at every invocation
+      local wImage = obj.imageCache[wid]
+      if not wImage then
+        wImage = obj:captureWindowSnapshot(selectedWin)
+        obj.imageCache[wid] = wImage
+      end
+      obj:showImageOverlay(wImage)
+      obj.PrevWindow = wid
+    end
+  end
+end
+
+-- only enable showing the thumbnails when desired
+-- it could be a bit slow and will take some memory
+if obj.showCurrentlySelectedWindow then
+  obj.pollChooser = hs.timer.doEvery(obj.displayDelay,display_currently_selected_window_callback)
+end
+
 function obj:bindHotkeys(mapping)
-   local def = {
-      all_windows                   = function() self:selectWindow(false,false) end,
-      all_windows_move_to_current_workspace = function() self:selectWindow(false,true) end,
-      app_windows                   = function() self:selectWindow(true, false) end,
-      first_window_per_app          = function() self:selectFirstAppWindow() end
-   }
-   -- do it by hand, so we can keep track of the hotkeys
-   for i,v in pairs (mapping)do
-     obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], def[i])
-   end
+  local def = {
+    all_windows                   = function() self:selectWindow(false,false) end,
+    all_windows_move_to_current_workspace = function() self:selectWindow(false,true) end,
+    app_windows                   = function() self:selectWindow(true, false) end,
+    first_window_per_app          = function() self:selectFirstAppWindow() end
+  }
+  -- do it by hand, so we can keep track of the hotkeys
+  for i,v in pairs (mapping)do
+    obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], def[i])
+  end
 end
 
 
