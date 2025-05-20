@@ -426,7 +426,6 @@ function obj:selectApp(moveToCurrentSpace)
    windowChooser:query(nil)
 end
 
-
 function obj:enter_chooser(windowChooser)
   -- show the chooser 
   -- and enable/disable whatever is necessary when in the
@@ -434,7 +433,6 @@ function obj:enter_chooser(windowChooser)
 
 --  theWindows:pause()
   obj:hotkeys_enable(false)
-  
 
   obj.trackPrevWindow = nil
   obj.trackChooser = windowChooser
