@@ -20,8 +20,8 @@ obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
 
 -- do we show the current selected window on the right corner of the screen?
-obj.showCurrentlySelectedWindow = true
-
+obj.showCurrentlySelectedWindow = nil
+b
 -- delay for the timer... it only refreshes at this interval
 obj.displayDelay = 0.2
 
