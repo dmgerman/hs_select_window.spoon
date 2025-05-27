@@ -8,7 +8,7 @@ obj.__index = obj
 -- metadata
 
 obj.name = "selectWindow"
-obj.version = "0.2"
+obj.version = "0.3"
 obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -29,6 +29,12 @@ obj.displayDelay = 0.2
 -- keep track of hotkeys so we can disable/enable them
 obj.hotkeys = {}
 obj.modalKeys = hs.hotkey.modal.new()
+
+obj.modalKeys:bind({}, "tab", function()
+    obj.showCurrentlySelectedWindow = not obj.showCurrentlySelectedWindow
+    print("Are we really resetting the showCurrentlySelectedWindow", obj.showCurrentlySelectedWindow)
+end)
+
 
 -- 
 obj.trackChooser = nil    -- timer callback to track the chooser selection
@@ -433,6 +439,7 @@ function obj:enter_chooser(windowChooser)
 
 --  theWindows:pause()
   obj:hotkeys_enable(false)
+  obj.pollChooser:start()
 
   obj.trackPrevWindow = nil
   obj.trackChooser = windowChooser
@@ -449,13 +456,14 @@ function obj:leave_chooser(chooser)
   -- exiting the chooser
   -- and enable/disable whatever is necessary when 
   -- the chooser returns
-
+  obj:showImageOverlay()
   obj.trackChooser =nil
   obj.trackPrevWindow = nil
   if obj.overlay then
     obj.overlay:delete()
     obj.overlay = nil
   end
+  -- TODO we need to delete all the images in the cache
   obj.imageCache = {}
 
   obj.modalKeys:exit()
@@ -519,9 +527,9 @@ function obj:showImageOverlay(image)
   -- show the image overlay in the bottom right of the screen
   if obj.overlay then
     obj.overlay:delete()
+    obj.overlay = nil
   end
   if not image then
-    print("no image provided")
     return
   end
   -- Get screen dimensions (main screen in this case)
@@ -558,6 +566,13 @@ function display_currently_selected_window_callback()
   if obj.trackChooser and obj.trackChooser:isVisible() then
     
     -- only operate if the track is visible
+    if not obj.showCurrentlySelectedWindow then
+      print("we should do it")
+      obj:showImageOverlay() -- clean any window that is currently being shown
+      return
+    else
+      print("Yes, we should not do it")
+    end
 
     local selectedWin = obj.trackChooser:selectedRowContents()["win"]
 
@@ -583,9 +598,8 @@ end
 
 -- only enable showing the thumbnails when desired
 -- it could be a bit slow and will take some memory
-if obj.showCurrentlySelectedWindow then
-  obj.pollChooser = hs.timer.doEvery(obj.displayDelay,display_currently_selected_window_callback)
-end
+obj.pollChooser = hs.timer.doEvery(obj.displayDelay,display_currently_selected_window_callback)
+obj.pollChooser:stop()
 
 function obj:bindHotkeys(mapping)
   local def = {
