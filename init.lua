@@ -21,7 +21,7 @@ obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
 -- do we show the current selected window on the right corner of the screen?
 obj.showCurrentlySelectedWindow = nil
-b
+
 -- delay for the timer... it only refreshes at this interval
 obj.displayDelay = 0.2
 
@@ -31,8 +31,8 @@ obj.hotkeys = {}
 obj.modalKeys = hs.hotkey.modal.new()
 
 obj.modalKeys:bind({}, "tab", function()
+    -- toggle it when typing tab
     obj.showCurrentlySelectedWindow = not obj.showCurrentlySelectedWindow
-    print("Are we really resetting the showCurrentlySelectedWindow", obj.showCurrentlySelectedWindow)
 end)
 
 
@@ -565,13 +565,10 @@ function display_currently_selected_window_callback()
   
   if obj.trackChooser and obj.trackChooser:isVisible() then
     
-    -- only operate if the track is visible
     if not obj.showCurrentlySelectedWindow then
-      print("we should do it")
+      -- user might have disabled it
       obj:showImageOverlay() -- clean any window that is currently being shown
       return
-    else
-      print("Yes, we should not do it")
     end
 
     local selectedWin = obj.trackChooser:selectedRowContents()["win"]
