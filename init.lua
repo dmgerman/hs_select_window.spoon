@@ -349,7 +349,7 @@ function obj:selectFirstAppWindow()
       local appName = (app and app:name()) or '(none)'
       local bundleID = (app and app:bundleID()) or appnName
       local appImage = nil
-      if bundleID ~= currentBundleID and (not seen[bundleID]) then
+      if bundleID and  bundleID ~= currentBundleID and (not seen[bundleID]) then
         seen[bundleID] = w
 
         if (not onlyCurrentApp) or (app == currentApp) then
