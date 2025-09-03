@@ -223,6 +223,7 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
       if w ~= currentWin then
          local app = w:application()
          local appName  = '(none)'
+         local appBundleId = nil
          if app then
            appName = app:name()
            -- add bundle id, to separate windows with same name, but different
@@ -232,7 +233,7 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
          if (not onlyCurrentApp) or (app == currentApp) then
 --            print("inserting...")
            local windowImage= nil
-           local appImage = hs.image.imageFromAppBundle(w:application():bundleID())
+           local appImage = appBundleId and hs.image.imageFromAppBundle(appBundleId)
             table.insert(windowChoices, {
                             text = w:title() .. "--" .. appName,
                             subText = appBundleId,
