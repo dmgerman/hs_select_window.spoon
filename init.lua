@@ -174,11 +174,13 @@ function obj:count_app_windows(currentApp)
 end
 
 
-function obj:list_window_choices(onlyCurrentApp, currentWin)
+function obj:list_window_choices(onlyCurrentApp, onlyCurrentSpace, currentWin)
    local windowChoices = {}
    local currentApp = currentWin:application()
---  print("\nstarting to populate")
---   print(currentApp)
+   local currentSpace = hs.spaces.focusedSpace()
+   --  print("\nstarting to populate")
+   --  print(currentApp)
+
    for i,w in ipairs(obj.currentWindows) do
       if w ~= currentWin then
          local app = w:application()
@@ -189,16 +191,20 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
            -- add bundle id, to separate windows with same name, but different
            -- bundleID
             appBundleId = app:bundleID()
-            appImage = hs.image.imageFromAppBundle(w:application():bundleID())
+            appImage = appBundleId and hs.image.imageFromAppBundle(w:application():bundleID()) or nil
          end
+
          if (not onlyCurrentApp) or (app == currentApp) then
 --            print("inserting...")
-            table.insert(windowChoices, {
-                            text = w:title() .. "--" .. appName,
-                            subText = appBundleId,
-                            uuid = i,
-                            image = appImage,
-                            win=w})
+            if (not onlyCurrentSpace) or hs.fnutils.contains(hs.spaces.windowSpaces(w), currentSpace) then
+               table.insert(windowChoices, {
+                  text = w:title() .. "--" .. appName,
+                  subText = appBundleId,
+                  uuid = i,
+                  image = appImage,
+                  win = w
+               })
+            end
          end
       end
    end
@@ -206,17 +212,31 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
 end
 
 function obj:windowActivate(w)
-  if w then
-    w:focus()
-    -- this fixes a bug when the application is a different screen 
-    w:application():activate()
-  else
-    hs.alert.show("unable fo focus " .. name)
-  end
+   if w then
+      print("window detail: " .. hs.inspect.inspect(w))
+      -- Switch to the space where the window is located (only if different from current space)
+      local windowSpace = hs.spaces.windowSpaces(w)
+      if windowSpace and #windowSpace > 0 then
+         local currentSpace = hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen())
+         if windowSpace[1] ~= currentSpace then
+            hs.spaces.gotoSpace(windowSpace[1])
+            hs.timer.doAfter(hs.spaces.MCwaitTime, function()
+               hs.spaces.closeMissionControl()
+               -- this fixes a bug when the application is a different screen
+               w:application():activate()
+               w:focus()
+            end)
+         end
+      end
+      -- this fixes a bug when the application is a different screen
+      w:application():activate()
+      w:focus()
+   else
+      hs.alert.show("unable to focus " .. (name or "window"))
+   end
+end
 
-end  
-
-function obj:selectWindow(onlyCurrentApp, moveToCurrent)
+function obj:selectWindow(onlyCurrentApp, onlyCurrentSpace, moveToCurrent)
 --   print("\n\n\n--------------------------------------------------------Starting the process...\n\n")
    -- move it before... because the creation of the list of options sometimes is too slow
    -- that the window is not created before the user starts typing
@@ -244,8 +264,7 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrent)
            )
            v:moveToScreen(mainScreen)
          end
-         v:focus()
-         v:application():activate()
+         self:windowActivate(v)
        else
          hs.alert.show("unable fo focus " .. name)
        end
@@ -268,7 +287,7 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrent)
    windowChooser:show()
 
    -- then fill fill it and let it do its thing
-   local windowChoices = obj:list_window_choices(onlyCurrentApp, currentWin)
+   local windowChoices = obj:list_window_choices(onlyCurrentApp, onlyCurrentSpace, currentWin)
    windowChooser:choices(windowChoices)
    windowChooser:rows(obj.rowsToDisplay)
    windowChooser:query(nil)
@@ -309,8 +328,7 @@ function obj:choosePreviousWindow(onlyCurrentApp, moveToCurrent)
       hs.spaces.moveWindowToSpace(chooseWindow, hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen()))
       chooseWindow:moveToScreen(mainScreen)
     end
-    chooseWindow:focus()
-    chooseWindow:application():activate()
+    self:windowActivate(chooseWindow)
   end
 end
 
@@ -332,9 +350,11 @@ end
 
 function obj:bindHotkeys(mapping)
    local def = {
-      all_windows         = function() self:selectWindow(false,false) end,
-      all_windows_current = function() self:selectWindow(false,true) end,
-      app_windows         = function() self:selectWindow(true, false) end,
+      all_windows         = function() self:selectWindow(false,false,false) end,
+      all_windows_current = function() self:selectWindow(false,false,true) end,
+      all_windows_for_space = function() self:selectWindow(false,true,false) end,
+      app_windows         = function() self:selectWindow(true, false, false) end,
+      app_windows_for_space = function() self:selectWindow(true, true, false) end,
       previous_window         = function() self:choosePreviousWindow(false,false) end,
       previous_window_current = function() self:choosePreviousWindow(false,true) end,
       previous_app_window         = function() self:choosePreviousWindow(true, false) end
