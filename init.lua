@@ -8,7 +8,7 @@ obj.name = "hs_select_window"
 -- metadata
 
 obj.name = "selectWindow"
-obj.version = "0.3"
+obj.version = "0.4"
 obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -140,7 +140,12 @@ local function initWindowFilter()
 
   print("[WF] Creating filter...")
   theWindows = hs.window.filter.new()
-  theWindows:setDefaultFilter{}
+  -- Only include standard, visible windows (excludes tooltips, popups, etc.)
+  theWindows:setDefaultFilter{
+    visible = true,
+    allowRoles = 'AXStandardWindow',  -- Only standard windows
+    currentSpace = nil  -- All spaces
+  }
   theWindows:setSortOrder(hs.window.filter.sortByFocusedLast)
   print("[WF] Filter created, getting windows...")
 
@@ -279,7 +284,8 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
    local appsWithWindows = {}  -- Track which apps have windows
 
    for i,w in ipairs(obj.currentWindows) do
-      if w ~= currentWin then
+      -- Skip non-standard windows (tooltips, popups, etc.) and the current window
+      if w ~= currentWin and w:isStandard() then
          local app = w:application()
          local appName  = '(none)'
          local appBundleId = nil
@@ -447,32 +453,39 @@ function obj:selectFirstAppWindow()
   resetSeconds('at selectFirstAppWindow')
   local currentWin = hs.window.focusedWindow()
   local currentApp = currentWin and currentWin:application() or nil
+  local currentPid = currentApp and currentApp:pid() or nil
   local currentBundleID = currentApp and (currentApp:bundleID() or currentApp:name()) or nil
 
   function list_window_first_choices()
     local windowChoices = {}
-    local seen = {}
+    local seenPids = {}        -- Track by PID for instance uniqueness
+    local seenBundleIds = {}   -- Track by bundleID for appendWindowlessApps
     for i,w in ipairs(obj.currentWindows) do
-      local app = w:application()
-      local appName = (app and app:name()) or '(none)'
-      local bundleID = (app and app:bundleID()) or appName
-      if bundleID and bundleID ~= currentBundleID and (not seen[bundleID]) then
-        seen[bundleID] = true
-        local appImage = obj:getAppIcon(bundleID)
-        table.insert(windowChoices, {
-            text = w:title() .. "--" .. appName,
-            subText = bundleID,
-            uuid = i,
-            image = appImage,
-            wImage = nil,
-            win=w})
+      -- Skip non-standard windows (tooltips, popups, etc.)
+      if w:isStandard() then
+        local app = w:application()
+        local appName = (app and app:name()) or '(none)'
+        local bundleID = (app and app:bundleID()) or appName
+        local pid = app and app:pid()
+        if pid and pid ~= currentPid and (not seenPids[pid]) then
+          seenPids[pid] = true
+          seenBundleIds[bundleID] = true
+          local appImage = obj:getAppIcon(bundleID)
+          table.insert(windowChoices, {
+              text = w:title() .. "--" .. appName,
+              subText = bundleID .. " (pid:" .. pid .. ")",
+              uuid = i,
+              image = appImage,
+              wImage = nil,
+              win=w})
+        end
       end
     end
     local elapsed = obj.startTime and (hs.timer.secondsSinceEpoch() - obj.startTime) or 0
     print(string.format("  81a. first windows iterated: %d windows, %.3f", #windowChoices, elapsed))
 
     -- Add running apps without windows
-    obj:appendWindowlessApps(windowChoices, seen, currentBundleID)
+    obj:appendWindowlessApps(windowChoices, seenBundleIds, currentBundleID)
     elapsed = obj.startTime and (hs.timer.secondsSinceEpoch() - obj.startTime) or 0
     print(string.format("  81b. windowless apps added: %d total, %.3f", #windowChoices, elapsed))
 

@@ -91,5 +91,5 @@ Note that the current window does not appear in the list of windows.
 
 * Known bugs
 
-- If you have two different instances of the same application running, the spoon will only track one instance. This is a problem in hammerspoon and the bug has been reported.
+- None at this point
 
