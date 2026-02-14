@@ -8,7 +8,7 @@ obj.name = "hs_select_window"
 -- metadata
 
 obj.name = "selectWindow"
-obj.version = "0.4"
+obj.version = "0.5"
 obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -388,7 +388,12 @@ function obj:selectWindowGeneric(fnListWindows)
        elseif choice["app"] then
          -- App without windows - just activate it
          print("5. activating app without window:", choice["app"]:name())
-         local activated = choice["app"]:activate()
+         local app = choice["app"]
+         local activated = app:activate(true)
+         if not activated then
+           print("5. activate failed, trying setFrontmost")
+           activated = app:setFrontmost(true)
+         end
          print("5. activate returned:", activated)
        else
          hs.alert.show("unable to focus")
@@ -414,12 +419,22 @@ function obj:selectWindowGeneric(fnListWindows)
      return
    end
    if #windowChoices == 1 then
-     local v = windowChoices[1]["win"]
-     print("activating 2:", hs.inspect(windowChoices))
-     print("activating  :", hs.inspect(v))
+     local choice = windowChoices[1]
+     print("activating single choice:", hs.inspect(choice))
      windowChooser:hide()
-     v:focus()
-     v:application():activate()
+
+     if choice["win"] then
+       -- Window exists - focus it
+       choice["win"]:focus()
+       choice["win"]:application():activate()
+     elseif choice["app"] then
+       -- App without windows - just activate it
+       local app = choice["app"]
+       local activated = app:activate(true)
+       if not activated then
+         app:setFrontmost(true)
+       end
+     end
      return
    end
 
