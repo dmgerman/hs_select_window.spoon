@@ -776,9 +776,15 @@ function obj:bindHotkeys(mapping)
     app_windows                   = function() self:selectWindow(true, false) end,
     first_window_per_app          = function() self:selectFirstAppWindow() end
   }
+  local descriptions = {
+    all_windows                   = "Select window from all windows [hs_select_window]",
+    all_windows_move_to_current_workspace = "Select window and move to current workspace [hs_select_window]",
+    app_windows                   = "Select window from current app [hs_select_window]",
+    first_window_per_app          = "Select first window per app [hs_select_window]"
+  }
   -- do it by hand, so we can keep track of the hotkeys
   for i,v in pairs (mapping)do
-    obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], def[i])
+    obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], descriptions[i] or ("Window selection [Window] (hs_select_window.spoon:781)"), def[i])
     obj.modalKeys:bind(v[1], v[2], function()
         hs.eventtap.keyStroke({"ctrl"}, "n")
     end)
