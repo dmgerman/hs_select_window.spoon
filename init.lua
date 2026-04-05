@@ -74,14 +74,6 @@ obj.overlayHeightRatio = 0.4 -- ratio of the screen to use for the overlay
 
 
 
-
--- for debugging purposes
-function obj:print_table(t, f)
---   for i,v in ipairs(t) do
---      print(i, f(v))
---   end
-end
-
 function obj:hotkeys_enable(enable)
   for _,v in pairs (obj.hotkeys)do
     if enable then
@@ -92,24 +84,13 @@ function obj:hotkeys_enable(enable)
   end
 end
 
--- for debugging purposes
-
-function obj:print_windows()
-  function w_info(w)
-     return string.format("[%s] [%s] [%s]",
-       w:application():bundleID(),
-       w:application():name(),
-       w:title()
-     )
-   end
-   obj:print_table(hs.window.visibleWindows(), w_info)
-end
 
 -- Window filter is initialized asynchronously to avoid blocking startup
 theWindows = nil
 obj.currentWindows = {}
 obj.previousSelection = nil
 obj.windowFilterReady = false
+
 
 -- Callback for window events - defined here so initWindowFilter can use it
 local function callback_window_created(w, appName, event)
@@ -192,11 +173,8 @@ end
 
 function obj:focus_by_app(appName)
    -- find a window with that application name and jump to it
---   print(' [' .. appName ..']')
    for i,v in ipairs(obj.currentWindows) do
---      print('           [' .. v:application():name() .. ']')
       if string.find(v:application():name(), appName) then
---         print("Focusing window" .. v:title())
          v:focus()
          return v
       end
@@ -206,11 +184,8 @@ end
 
 function obj:focus_by_bundle_id(bundleID)
   -- find a window with that application name and jump to it
-  --   print(' [' .. appName ..']')
   for i,v in ipairs(obj.currentWindows) do
-    --      print('           [' .. v:application():name() .. ']')
     if string.find(v:application():bundleID(), bundleID) then
-      --         print("Focusing window" .. v:title())
       v:focus()
       return v
     end
@@ -221,11 +196,8 @@ end
 
 function obj:focus_by_app_and_title(appName, title)
   -- find a window with that application name and jump to it
-  --   print(' [' .. appName ..']')
   for i,v in ipairs(obj.currentWindows) do
---     print('           [' .. v:application():name() .. ']')
     if (v:application():name() == appName) and string.find(v:title(), title) then
-      --         print("Focusing window" .. v:title())
       v:focus()
       return v
     end
@@ -308,15 +280,11 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
          end
       end
    end
-   local elapsed = obj.startTime and (hs.timer.secondsSinceEpoch() - obj.startTime) or 0
-   print(string.format("  81a. windows iterated: %d windows, %.3f", #windowChoices, elapsed))
 
    -- Add running apps without windows (only when not filtering by current app)
    if not onlyCurrentApp then
       local currentBundleId = currentApp and currentApp:bundleID() or nil
       obj:appendWindowlessApps(windowChoices, appsWithWindows, currentBundleId)
-      elapsed = obj.startTime and (hs.timer.secondsSinceEpoch() - obj.startTime) or 0
-      print(string.format("  81b. windowless apps added: %d total, %.3f", #windowChoices, elapsed))
    end
 
    return windowChoices
@@ -333,37 +301,18 @@ function obj:windowActivate(w)
     hs.alert.show("unable fo focus " .. name)
   end
 
-end  
-
-obj.startTime = hs.timer.secondsSinceEpoch()
-function resetSeconds(message)
-  obj.startTime = hs.timer.secondsSinceEpoch()
-  if message then
-    print("Reset time -------------------  " .. message)
-  else
-    print("Reset time -------------------  ")
-  end
-end
-function secondsPassed()
-  return hs.timer.secondsSinceEpoch() - obj.startTime
 end
 
 function obj:selectWindowGeneric(fnListWindows)
 
   local windowChooser = hs.chooser.new(function(choice)
-       print("00. choice", secondsPassed())
        obj:leave_chooser()
-       print("10. choice", secondsPassed())
 
        if not choice then
          return
        end
        local v = choice["win"]
-       print("21. choice", secondsPassed())
        if v then
---         hs.alert.show("doing something, we have a v")
---         print(v)
-         print("22. choice", secondsPassed())
          if moveToCurrentSpace then
            hs.alert.show("move to current")
            -- we don't want to keep the window maximized
@@ -376,29 +325,22 @@ function obj:selectWindowGeneric(fnListWindows)
            )
            v:moveToScreen(mainScreen)
          end
-         print("30. to focus", secondsPassed())
          v:focus()
-         print("40. to find app",secondsPassed())
          local app = v:application()
-         print("50. to activate", secondsPassed())
          if app then
            app:activate()
          end
-         print("5. activated", secondsPassed())
        elseif choice["app"] then
          -- App without windows - just activate it
-         print("5. activating app without window:", choice["app"]:name())
          local app = choice["app"]
          local activated = app:activate(true)
          if not activated then
-           print("5. activate failed, trying setFrontmost")
+           print("activate failed, trying setFrontmost")
            activated = app:setFrontmost(true)
          end
-         print("5. activate returned:", activated)
        else
          hs.alert.show("unable to focus")
        end
-       print("99. done", secondsPassed())
    end)
 
    if #obj.currentWindows == 0 then
@@ -407,12 +349,9 @@ function obj:selectWindowGeneric(fnListWindows)
    end
    -- show it, so we start catching keyboard events
    obj:enter_chooser(windowChooser)
-   print("80 ******** when does this happend [end of selectWindowGeneric]?", secondsPassed())
 
-   -- then fill fill it and let it do its thing
-   print("81. building window choices", secondsPassed())
+   -- then fill it and let it do its thing
    local windowChoices = fnListWindows()
-   print("82. built window choices: " .. #windowChoices .. " items", secondsPassed())
    if #windowChoices == 0 then
      hs.alert.show("There are no other windows to select.")
      windowChooser:hide()
@@ -420,7 +359,6 @@ function obj:selectWindowGeneric(fnListWindows)
    end
    if #windowChoices == 1 then
      local choice = windowChoices[1]
-     print("activating single choice:", hs.inspect(choice))
      windowChooser:hide()
 
      if choice["win"] then
@@ -438,23 +376,33 @@ function obj:selectWindowGeneric(fnListWindows)
      return
    end
 
-   print("83. setting choices on chooser", secondsPassed())
    windowChooser:choices(windowChoices)
-   print("84. choices set", secondsPassed())
    windowChooser:rows(obj.rowsToDisplay)
    windowChooser:query(nil)
-   print("85. chooser ready", secondsPassed())
 end
 
 function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
-  -- check if we have other windows
   local currentWin = hs.window.focusedWindow()
-  resetSeconds('at Select window')
 
   if onlyCurrentApp then
-    local nWindows = obj:count_app_windows(currentWin:application())
-    if nWindows <= 1 then
+    local currentApp = currentWin:application()
+    -- Build the list of other windows for this app in a single pass
+    local otherWindows = {}
+    for _, w in ipairs(obj.currentWindows) do
+      if w ~= currentWin and w:application() == currentApp and w:isStandard() then
+        table.insert(otherWindows, w)
+      end
+    end
+
+    if #otherWindows == 0 then
       hs.alert.show("no other window for this application ")
+      return
+    end
+
+    -- Fast path: directly focus the only other window, skip chooser entirely
+    if #otherWindows == 1 then
+      otherWindows[1]:focus()
+      otherWindows[1]:application():activate()
       return
     end
   end
@@ -465,7 +413,6 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
 end
 
 function obj:selectFirstAppWindow()
-  resetSeconds('at selectFirstAppWindow')
   local currentWin = hs.window.focusedWindow()
   local currentApp = currentWin and currentWin:application() or nil
   local currentPid = currentApp and currentApp:pid() or nil
@@ -496,13 +443,8 @@ function obj:selectFirstAppWindow()
         end
       end
     end
-    local elapsed = obj.startTime and (hs.timer.secondsSinceEpoch() - obj.startTime) or 0
-    print(string.format("  81a. first windows iterated: %d windows, %.3f", #windowChoices, elapsed))
-
     -- Add running apps without windows
     obj:appendWindowlessApps(windowChoices, seenBundleIds, currentBundleID)
-    elapsed = obj.startTime and (hs.timer.secondsSinceEpoch() - obj.startTime) or 0
-    print(string.format("  81b. windowless apps added: %d total, %.3f", #windowChoices, elapsed))
 
     return windowChoices
   end
@@ -525,8 +467,6 @@ function obj:selectApp(moveToCurrentSpace)
        end
        local v = choice["win"]
        if v then
---         hs.alert.show("doing something, we have a v")
---         print(v)
          if moveToCurrentSpace then
            hs.alert.show("move to current")
            -- we don't want to keep the window maximized
@@ -568,12 +508,6 @@ function obj:selectApp(moveToCurrentSpace)
 end
 
 function obj:enter_chooser(windowChooser)
-  -- show the chooser 
-  -- and enable/disable whatever is necessary when in the
-  -- chooser
-
-  --  theWindows:pause()
-  print("10 enter_chooser: ", secondsPassed())
   obj:hotkeys_enable(false)
   obj.pollChooser:start()
 
@@ -596,46 +530,25 @@ function obj:enter_chooser(windowChooser)
   end
 
   windowChooser:show()
-
   obj.modalKeys:enter()
-  print("0.1 end of Enter chooser: ", secondsPassed())
-
-
 end
 
 function obj:leave_chooser(chooser)
-  -- exiting the chooser
-  -- and enable/disable whatever is necessary when 
-  -- the chooser returns
-  print("0.1 Enter Leave chooser: ", secondsPassed())
-
   obj:showImageOverlay()
-  obj.trackChooser =nil
+  obj.trackChooser = nil
   obj.trackPrevWindow = nil
-
-  print("1 Leave chooser: ", secondsPassed())
-
 
   if obj.overlay then
     obj.overlay:delete()
     obj.overlay = nil
   end
-  print("2 Leave chooser: ", secondsPassed())
 
   if not obj.persistentThumbnailCache then
     obj.imageCache = {}
   end
 
   obj.modalKeys:exit()
-  print("3 Leave chooser: ", secondsPassed())
-
-
---  theWindows:resume()
-
   obj:hotkeys_enable(true)
-
-  print("100 Leave chooser: ", secondsPassed())
-
 end
 
 
@@ -655,7 +568,6 @@ function obj:nextFullScreen()
   for i,v in ipairs(obj.currentWindows) do
     if v:isFullScreen() then
       if (obj.currentWindows[1] == v) then
-         --        print("it is the currentn window")
          -- do nothing
       else
         v:focus()
