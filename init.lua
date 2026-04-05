@@ -4,7 +4,6 @@
 
 local obj={}
 obj.__index = obj
-obj.name = "hs_select_window"
 -- metadata
 
 obj.name = "selectWindow"
@@ -56,8 +55,6 @@ end)
 
 -- 
 obj.trackChooser = nil    -- timer callback to track the chooser selection
-obj.trackPrevWindow = nil -- previous window shown in the chooser, so we don't update
-                          -- unnecessarily
 obj.imageCache = {}       -- cache window thumbnails
 obj.appIconCache = {}     -- cache app icons (keyed by bundleID, never expires)
 
@@ -86,9 +83,8 @@ end
 
 
 -- Window filter is initialized asynchronously to avoid blocking startup
-theWindows = nil
+obj.windowFilter = nil
 obj.currentWindows = {}
-obj.previousSelection = nil
 obj.windowFilterReady = false
 
 
@@ -120,26 +116,26 @@ local function initWindowFilter()
   local wf_start = hs.timer.absoluteTime()
 
   print("[WF] Creating filter...")
-  theWindows = hs.window.filter.new()
+  obj.windowFilter = hs.window.filter.new()
   -- Only include standard, visible windows (excludes tooltips, popups, etc.)
-  theWindows:setDefaultFilter{
+  obj.windowFilter:setDefaultFilter{
     visible = true,
     allowRoles = 'AXStandardWindow',  -- Only standard windows
     currentSpace = nil  -- All spaces
   }
-  theWindows:setSortOrder(hs.window.filter.sortByFocusedLast)
+  obj.windowFilter:setSortOrder(hs.window.filter.sortByFocusedLast)
   print("[WF] Filter created, getting windows...")
 
   -- Get all windows
-  for i,v in ipairs(theWindows:getWindows()) do
+  for i,v in ipairs(obj.windowFilter:getWindows()) do
     table.insert(obj.currentWindows, v)
   end
   print(string.format("[WF] Got %d windows, subscribing...", #obj.currentWindows))
 
   -- Subscribe to window events
-  theWindows:subscribe(hs.window.filter.windowCreated, callback_window_created)
-  theWindows:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
-  theWindows:subscribe(hs.window.filter.windowFocused, callback_window_created)
+  obj.windowFilter:subscribe(hs.window.filter.windowCreated, callback_window_created)
+  obj.windowFilter:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
+  obj.windowFilter:subscribe(hs.window.filter.windowFocused, callback_window_created)
   print("[WF] Subscribed to events")
 
   obj.windowFilterReady = true
@@ -164,7 +160,7 @@ function obj:focus_by_title(t)
       hs.alert.show("No string provided to focus_by_title")
       return nil
    end
-   w = obj:find_window_by_title(t)
+   local w = obj:find_window_by_title(t)
    if w then
       w:focus()
    end
@@ -211,17 +207,6 @@ end
 print("[WF] Timer scheduled for window filter init")
 obj.initTimer = hs.timer.doAfter(0.1, initWindowFilter)
 
-
-function obj:count_app_windows(currentApp)
-   local count = 0
-   for i,w in ipairs(obj.currentWindows) do
-      local app = w:application()
-      if  (app == currentApp) then
-          count = count + 1
-      end
-   end
-   return count
-end
 
 
 -- Helper: append running apps without windows to a choices list
@@ -291,19 +276,7 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
 end
 
 
-
-function obj:windowActivate(w)
-  if w then
-    w:focus()
-    -- this fixes a bug when the application is a different screen 
-    w:application():activate()
-  else
-    hs.alert.show("unable fo focus " .. name)
-  end
-
-end
-
-function obj:selectWindowGeneric(fnListWindows)
+function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
 
   local windowChooser = hs.chooser.new(function(choice)
        obj:leave_chooser()
@@ -408,7 +381,8 @@ function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
   end
 
   obj:selectWindowGeneric(
-    function () return obj:list_window_choices(onlyCurrentApp, currentWin) end
+    function () return obj:list_window_choices(onlyCurrentApp, currentWin) end,
+    moveToCurrentSpace
   )
 end
 
@@ -418,7 +392,7 @@ function obj:selectFirstAppWindow()
   local currentPid = currentApp and currentApp:pid() or nil
   local currentBundleID = currentApp and (currentApp:bundleID() or currentApp:name()) or nil
 
-  function list_window_first_choices()
+  local function list_window_first_choices()
     local windowChoices = {}
     local seenPids = {}        -- Track by PID for instance uniqueness
     local seenBundleIds = {}   -- Track by bundleID for appendWindowlessApps
@@ -454,64 +428,10 @@ end
 
 
 
-function obj:selectApp(moveToCurrentSpace)
-   -- show only first window of a given application
-
-   local currentWin = hs.window.focusedWindow()
-
-   local windowChooser = hs.chooser.new(function(choice)
-       obj:leave_chooser()
-       if not choice then
-         hs.alert.show("Nothing to focus");
-         return
-       end
-       local v = choice["win"]
-       if v then
-         if moveToCurrentSpace then
-           hs.alert.show("move to current")
-           -- we don't want to keep the window maximized
-           -- move to the current space... so we leave that space alone
-           if v:isFullScreen() then
-             v:toggleFullScreen()
-           end
-           hs.spaces.moveWindowToSpace(v,
-                hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen())
-           )
-           v:moveToScreen(mainScreen)
-         end
-         v:focus()
-         v:application():activate()
-       else
-         hs.alert.show("unable fo focus " .. name)
-       end
-   end)
-
-   -- check if we have other windows
-   if onlyCurrentApp then
-      local nWindows = obj:count_app_windows(currentWin:application())
-      if nWindows == 0 then
-         hs.alert.show("no other window for this application ")
-         return
-      end
-   end
-   if #obj.currentWindows == 0 then
-      hs.alert.show("no other window available ")
-      return
-   end
-
-   obj:enter_chooser(windowChooser)
-   
-   local windowChoices = obj:list_window_choices(onlyCurrentApp, currentWin)
-   windowChooser:choices(windowChoices)
-   windowChooser:rows(obj.rowsToDisplay)
-   windowChooser:query(nil)
-end
-
 function obj:enter_chooser(windowChooser)
   obj:hotkeys_enable(false)
   obj.pollChooser:start()
 
-  obj.trackPrevWindow = nil
   obj.trackChooser = windowChooser
   if not obj.persistentThumbnailCache then
     obj.imageCache = {}
@@ -536,7 +456,6 @@ end
 function obj:leave_chooser(chooser)
   obj:showImageOverlay()
   obj.trackChooser = nil
-  obj.trackPrevWindow = nil
 
   if obj.overlay then
     obj.overlay:delete()
@@ -637,7 +556,7 @@ end
 
 -- call back to display the snapshot of the currently
 -- active window
-function display_currently_selected_window_callback()
+local function display_currently_selected_window_callback()
   
   if obj.trackChooser and obj.trackChooser:isVisible() then
     
@@ -658,20 +577,15 @@ function display_currently_selected_window_callback()
       return
     end
 
-    if selectedWin then
-      local wid = selectedWin:id()
-
-      if wid ~= obj.PrevWindow then
-        -- keep a cache of the images
-        -- this cache is regenerated at every invocation
-        local wImage = obj.imageCache[wid]
-        if not wImage then
-          wImage = obj:captureWindowSnapshot(selectedWin)
-          obj.imageCache[wid] = wImage
-        end
-        obj:showImageOverlay(wImage)
-        obj.PrevWindow = wid
+    local wid = selectedWin:id()
+    if wid ~= obj.PrevWindow then
+      local wImage = obj.imageCache[wid]
+      if not wImage then
+        wImage = obj:captureWindowSnapshot(selectedWin)
+        obj.imageCache[wid] = wImage
       end
+      obj:showImageOverlay(wImage)
+      obj.PrevWindow = wid
     end
   end
 end
@@ -701,7 +615,7 @@ function obj:bindHotkeys(mapping)
         hs.eventtap.keyStroke({"ctrl"}, "n")
     end)
 -- I am just going to assume that nobody is going to use shift to call the function
-    local ks = v[1]
+    local ks = {table.unpack(v[1])}
     ks[#ks+1] = "shift"
     obj.modalKeys:bind(ks, v[2], function()
         hs.eventtap.keyStroke({"ctrl"}, "p")
