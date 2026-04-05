@@ -4,6 +4,7 @@
 
 local obj={}
 obj.__index = obj
+local log = hs.logger.new("selectWindow", "info")
 -- metadata
 
 obj.name = "selectWindow"
@@ -137,10 +138,10 @@ end
 
 -- Function to initialize window filter (called after short delay)
 local function initWindowFilter()
-  print("[WF] Starting initialization...")
+  log.i("Starting initialization...")
   local wf_start = hs.timer.absoluteTime()
 
-  print("[WF] Creating filter...")
+  log.i("Creating filter...")
   obj.windowFilter = hs.window.filter.new()
   -- Only include standard, visible windows (excludes tooltips, popups, etc.)
   obj.windowFilter:setDefaultFilter{
@@ -149,23 +150,23 @@ local function initWindowFilter()
     currentSpace = nil  -- All spaces
   }
   obj.windowFilter:setSortOrder(hs.window.filter.sortByFocusedLast)
-  print("[WF] Filter created, getting windows...")
+  log.i("Filter created, getting windows...")
 
   -- Get all windows
   for i,v in ipairs(obj.windowFilter:getWindows()) do
     table.insert(obj.currentWindows, v)
   end
-  print(string.format("[WF] Got %d windows, subscribing...", #obj.currentWindows))
+  log.f("Got %d windows, subscribing...", #obj.currentWindows)
 
   -- Subscribe to window events
   obj.windowFilter:subscribe(hs.window.filter.windowCreated, callback_window_created)
   obj.windowFilter:subscribe(hs.window.filter.windowDestroyed, callback_window_created)
   obj.windowFilter:subscribe(hs.window.filter.windowFocused, callback_window_created)
-  print("[WF] Subscribed to events")
+  log.i("Subscribed to events")
 
   obj.windowFilterReady = true
   local elapsed = (hs.timer.absoluteTime() - wf_start) / 1e9
-  print(string.format("[WF] Window filter initialized (%.1fs)", elapsed))
+  log.f("Window filter initialized (%.1fs)", elapsed)
   hs.alert.show(string.format("Window filter ready (%d windows)", #obj.currentWindows))
 end
 
@@ -215,7 +216,7 @@ end
 
 -- Initialize window filter after a short delay to not block startup
 -- (callback_window_created is now defined earlier in file)
-print("[WF] Timer scheduled for window filter init")
+log.i("Timer scheduled for window filter init")
 obj.initTimer = hs.timer.doAfter(0.1, initWindowFilter)
 
 
@@ -316,7 +317,7 @@ function obj:_showChooser(fnListWindows, moveToCurrentSpace)
          local app = choice["app"]
          local activated = app:activate(true)
          if not activated then
-           print("activate failed, trying setFrontmost")
+           log.w("activate failed, trying setFrontmost")
            activated = app:setFrontmost(true)
          end
        else
