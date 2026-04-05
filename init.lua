@@ -320,26 +320,20 @@ function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
       hs.alert.show("no other window available ")
       return
    end
-   -- show it, so we start catching keyboard events
-   obj:enter_chooser(windowChooser)
 
-   -- then fill it and let it do its thing
+   -- Build choices before showing the chooser so we never need to
+   -- show-then-immediately-hide (which leaks enter_chooser state)
    local windowChoices = fnListWindows()
    if #windowChoices == 0 then
      hs.alert.show("There are no other windows to select.")
-     windowChooser:hide()
      return
    end
    if #windowChoices == 1 then
      local choice = windowChoices[1]
-     windowChooser:hide()
-
      if choice["win"] then
-       -- Window exists - focus it
        choice["win"]:focus()
        choice["win"]:application():activate()
      elseif choice["app"] then
-       -- App without windows - just activate it
        local app = choice["app"]
        local activated = app:activate(true)
        if not activated then
@@ -349,6 +343,7 @@ function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
      return
    end
 
+   obj:enter_chooser(windowChooser)
    windowChooser:choices(windowChoices)
    windowChooser:rows(obj.rowsToDisplay)
    windowChooser:query(nil)
@@ -454,6 +449,7 @@ function obj:enter_chooser(windowChooser)
 end
 
 function obj:leave_chooser(chooser)
+  obj.pollChooser:stop()
   obj:showImageOverlay()
   obj.trackChooser = nil
 
@@ -624,7 +620,27 @@ function obj:bindHotkeys(mapping)
 
 end
 
-
+function obj:stop()
+  self.pollChooser:stop()
+  if self.initTimer then
+    self.initTimer:stop()
+    self.initTimer = nil
+  end
+  if self.windowFilter then
+    self.windowFilter:unsubscribeAll()
+    self.windowFilter = nil
+  end
+  for name, hk in pairs(self.hotkeys) do
+    hk:delete()
+  end
+  self.hotkeys = {}
+  self.modalKeys:exit()
+  self.currentWindows = {}
+  if self.overlay then
+    self.overlay:delete()
+    self.overlay = nil
+  end
+end
 
 return obj
 
