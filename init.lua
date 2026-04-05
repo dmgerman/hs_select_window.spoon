@@ -492,23 +492,8 @@ function obj:nextFullScreen()
 end
 
 function obj:captureWindowSnapshot(window)
-  -- Get the window's ID
-  if not window then
-    return nil
-  end
-  local windowID = window:id()
-
-  -- Define the output path for the screenshot
-  local outputPath = "/tmp/window_snapshot_" .. windowID .. ".png"
-
-  -- Use screencapture with the window ID to capture the window
-  local command = "screencapture -x -l" .. windowID .. " " .. outputPath
-  hs.execute(command)
-
-  -- Load the image from the file into an hs.image object
-  local image = hs.image.imageFromPath(outputPath)
-
-  return image
+  if not window then return nil end
+  return window:snapshot()
 end
 
 
