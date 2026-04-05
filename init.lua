@@ -249,9 +249,10 @@ function obj:windowChoices(onlyCurrentApp, currentWin)
          end
          if (not onlyCurrentApp) or (app == currentApp) then
            local appImage = obj:getAppIcon(appBundleId)
+           local screenName = w:screen() and w:screen():name() or ""
            table.insert(windowChoices, {
-                           text = w:title() .. "--" .. appName,
-                           subText = appBundleId,
+                           text = w:title(),
+                           subText = appName .. " — " .. screenName,
                            uuid = i,
                            image = appImage,
                            wImage = nil,
@@ -307,7 +308,7 @@ function obj:_showChooser(fnListWindows, moveToCurrentSpace)
    end)
 
    if #obj.currentWindows == 0 then
-      hs.alert.show("no other window available ")
+      hs.alert.show("no other window available")
       return
    end
 
@@ -315,7 +316,7 @@ function obj:_showChooser(fnListWindows, moveToCurrentSpace)
    -- show-then-immediately-hide (which leaks enter_chooser state)
    local windowChoices = fnListWindows()
    if #windowChoices == 0 then
-     hs.alert.show("There are no other windows to select.")
+     hs.alert.show("no other window to select")
      return
    end
    if #windowChoices == 1 then
@@ -364,7 +365,7 @@ function obj:selectAppWindow()
   end
 
   if #otherWindows == 0 then
-    hs.alert.show("no other window for this application ")
+    hs.alert.show("no other window for this application")
     return
   end
 
@@ -400,9 +401,10 @@ function obj:selectApp()
           seenPids[pid] = true
           seenBundleIds[bundleID] = true
           local appImage = obj:getAppIcon(bundleID)
+          local screenName = w:screen() and w:screen():name() or ""
           table.insert(windowChoices, {
-              text = w:title() .. "--" .. appName,
-              subText = bundleID .. " (pid:" .. pid .. ")",
+              text = w:title(),
+              subText = appName .. " — " .. screenName,
               uuid = i,
               image = appImage,
               wImage = nil,
@@ -469,26 +471,20 @@ function obj:previousWindow()
    return obj.currentWindows[2]
 end
 
--- simple function to be able to go back to the previous window
 function obj:choosePreviousWindow()
   if obj.currentWindows[2] then
-    obj.currentWindows[2]:focus()
+    focusAndActivate(obj.currentWindows[2])
   end
 end
 
 function obj:nextFullScreen()
-  -- find a window by title.
-  for i,v in ipairs(obj.currentWindows) do
-    if v:isFullScreen() then
-      if (obj.currentWindows[1] == v) then
-         -- do nothing
-      else
-        v:focus()
-        return
-      end
+  for _, v in ipairs(obj.currentWindows) do
+    if v:isFullScreen() and v ~= obj.currentWindows[1] then
+      focusAndActivate(v)
+      return
     end
   end
-  hs.alert("No next fullscreen window")
+  hs.alert.show("no next fullscreen window")
 end
 
 function obj:captureWindowSnapshot(window)
