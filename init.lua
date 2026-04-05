@@ -7,7 +7,7 @@ obj.__index = obj
 -- metadata
 
 obj.name = "selectWindow"
-obj.version = "0.5"
+obj.version = "2.0"
 obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -68,6 +68,14 @@ function obj:getAppIcon(bundleId)
 end
 obj.overlay = nil         -- keep track of the snapshop being displayed
 obj.overlayHeightRatio = 0.4 -- ratio of the screen to use for the overlay
+
+-- Focus a window and activate its application.
+-- Activation is needed when the window is on a different screen.
+local function focusAndActivate(w)
+  w:focus()
+  local app = w:application()
+  if app then app:activate() end
+end
 
 
 
@@ -144,7 +152,7 @@ local function initWindowFilter()
   hs.alert.show(string.format("Window filter ready (%d windows)", #obj.currentWindows))
 end
 
-function obj:find_window_by_title(t)
+function obj:findByTitle(t)
    -- find a window by title.
    for i,v in ipairs(obj.currentWindows) do
       if string.find(v:title(), t) then
@@ -154,21 +162,19 @@ function obj:find_window_by_title(t)
    return nil
 end
 
-function obj:focus_by_title(t)
-   -- focus the window with given title
+function obj:focusByTitle(t)
    if not t then
-      hs.alert.show("No string provided to focus_by_title")
+      hs.alert.show("No string provided to focusByTitle")
       return nil
    end
-   local w = obj:find_window_by_title(t)
+   local w = obj:findByTitle(t)
    if w then
       w:focus()
    end
    return w
 end
 
-function obj:focus_by_app(appName)
-   -- find a window with that application name and jump to it
+function obj:focusByApp(appName)
    for i,v in ipairs(obj.currentWindows) do
       if string.find(v:application():name(), appName) then
          v:focus()
@@ -178,20 +184,8 @@ function obj:focus_by_app(appName)
    return nil
 end
 
-function obj:focus_by_bundle_id(bundleID)
-  -- find a window with that application name and jump to it
-  for i,v in ipairs(obj.currentWindows) do
-    if string.find(v:application():bundleID(), bundleID) then
-      v:focus()
-      return v
-    end
-  end
-  return nil
-end
 
-
-function obj:focus_by_app_and_title(appName, title)
-  -- find a window with that application name and jump to it
+function obj:focusByAppAndTitle(appName, title)
   for i,v in ipairs(obj.currentWindows) do
     if (v:application():name() == appName) and string.find(v:title(), title) then
       v:focus()
@@ -235,7 +229,7 @@ function obj:appendWindowlessApps(choices, seenBundleIds, excludeBundleId)
    end
 end
 
-function obj:list_window_choices(onlyCurrentApp, currentWin)
+function obj:windowChoices(onlyCurrentApp, currentWin)
    local windowChoices = {}
    local currentApp = currentWin and currentWin:application() or nil
    local appsWithWindows = {}  -- Track which apps have windows
@@ -276,7 +270,7 @@ function obj:list_window_choices(onlyCurrentApp, currentWin)
 end
 
 
-function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
+function obj:_showChooser(fnListWindows, moveToCurrentSpace)
 
   local windowChooser = hs.chooser.new(function(choice)
        obj:leave_chooser()
@@ -298,11 +292,7 @@ function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
            )
            v:moveToScreen(mainScreen)
          end
-         v:focus()
-         local app = v:application()
-         if app then
-           app:activate()
-         end
+         focusAndActivate(v)
        elseif choice["app"] then
          -- App without windows - just activate it
          local app = choice["app"]
@@ -331,8 +321,7 @@ function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
    if #windowChoices == 1 then
      local choice = windowChoices[1]
      if choice["win"] then
-       choice["win"]:focus()
-       choice["win"]:application():activate()
+       focusAndActivate(choice["win"])
      elseif choice["app"] then
        local app = choice["app"]
        local activated = app:activate(true)
@@ -349,39 +338,48 @@ function obj:selectWindowGeneric(fnListWindows, moveToCurrentSpace)
    windowChooser:query(nil)
 end
 
-function obj:selectWindow(onlyCurrentApp, moveToCurrentSpace)
+function obj:selectWindow()
   local currentWin = hs.window.focusedWindow()
-
-  if onlyCurrentApp then
-    local currentApp = currentWin:application()
-    -- Build the list of other windows for this app in a single pass
-    local otherWindows = {}
-    for _, w in ipairs(obj.currentWindows) do
-      if w ~= currentWin and w:application() == currentApp and w:isStandard() then
-        table.insert(otherWindows, w)
-      end
-    end
-
-    if #otherWindows == 0 then
-      hs.alert.show("no other window for this application ")
-      return
-    end
-
-    -- Fast path: directly focus the only other window, skip chooser entirely
-    if #otherWindows == 1 then
-      otherWindows[1]:focus()
-      otherWindows[1]:application():activate()
-      return
-    end
-  end
-
-  obj:selectWindowGeneric(
-    function () return obj:list_window_choices(onlyCurrentApp, currentWin) end,
-    moveToCurrentSpace
+  obj:_showChooser(
+    function () return obj:windowChoices(false, currentWin) end
   )
 end
 
-function obj:selectFirstAppWindow()
+function obj:selectWindowAndMove()
+  local currentWin = hs.window.focusedWindow()
+  obj:_showChooser(
+    function () return obj:windowChoices(false, currentWin) end,
+    true
+  )
+end
+
+function obj:selectAppWindow()
+  local currentWin = hs.window.focusedWindow()
+  local currentApp = currentWin:application()
+  local otherWindows = {}
+  for _, w in ipairs(obj.currentWindows) do
+    if w ~= currentWin and w:application() == currentApp and w:isStandard() then
+      table.insert(otherWindows, w)
+    end
+  end
+
+  if #otherWindows == 0 then
+    hs.alert.show("no other window for this application ")
+    return
+  end
+
+  -- Fast path: directly focus the only other window, skip chooser entirely
+  if #otherWindows == 1 then
+    focusAndActivate(otherWindows[1])
+    return
+  end
+
+  obj:_showChooser(
+    function () return obj:windowChoices(true, currentWin) end
+  )
+end
+
+function obj:selectApp()
   local currentWin = hs.window.focusedWindow()
   local currentApp = currentWin and currentWin:application() or nil
   local currentPid = currentApp and currentApp:pid() or nil
@@ -418,7 +416,7 @@ function obj:selectFirstAppWindow()
     return windowChoices
   end
 
-  obj:selectWindowGeneric(list_window_first_choices)
+  obj:_showChooser(list_window_first_choices)
 end
 
 
@@ -593,10 +591,10 @@ obj.pollChooser:stop()
 
 function obj:bindHotkeys(mapping)
   local def = {
-    all_windows                   = function() self:selectWindow(false,false) end,
-    all_windows_move_to_current_workspace = function() self:selectWindow(false,true) end,
-    app_windows                   = function() self:selectWindow(true, false) end,
-    first_window_per_app          = function() self:selectFirstAppWindow() end
+    all_windows                          = function() self:selectWindow() end,
+    all_windows_move_to_current_workspace = function() self:selectWindowAndMove() end,
+    app_windows                          = function() self:selectAppWindow() end,
+    first_window_per_app                 = function() self:selectApp() end
   }
   local descriptions = {
     all_windows                   = "Select window from all windows [hs_select_window]",
