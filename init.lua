@@ -17,6 +17,9 @@ obj.license = "MIT - https://opensource.org/licenses/MIT"
 
 obj.rowsToDisplay = 14 -- how many rows to display in the chooser
 
+-- font size for chooser text (nil = system default)
+obj.fontSize = nil
+
 
 -- do we show the current selected window on the right corner of the screen?
 obj.showCurrentlySelectedWindow = nil
@@ -75,6 +78,20 @@ local function focusAndActivate(w)
   w:focus()
   local app = w:application()
   if app then app:activate() end
+end
+
+local TITLE_COLOR = { white = 0.25 }   -- very dark grey
+local SUBTITLE_COLOR = { white = 0.35 } -- slightly lighter
+local function styledText(text, sizeOffset, color, indent)
+  if not obj.fontSize then
+    if indent then return "    " .. text end
+    return text
+  end
+  local size = obj.fontSize + (sizeOffset or 0)
+  local attrs = { font = { size = size } }
+  if color then attrs.color = color end
+  local displayText = indent and ("    " .. text) or text
+  return hs.styledtext.new(displayText, attrs)
 end
 
 
@@ -218,8 +235,8 @@ function obj:appendWindowlessApps(choices, seenBundleIds, excludeBundleId)
          app:kind() == 1 then  -- kind 1 = regular app (not background/accessory)
          local appImage = obj:getAppIcon(bundleId)
          table.insert(choices, {
-                         text = appName .. " (no windows)",
-                         subText = bundleId,
+                         text = styledText(appName .. " (no windows)", 0, TITLE_COLOR),
+                         subText = styledText(bundleId, -2, SUBTITLE_COLOR, true),
                          uuid = "app_" .. bundleId,
                          image = appImage,
                          wImage = nil,
@@ -251,8 +268,8 @@ function obj:windowChoices(onlyCurrentApp, currentWin)
            local appImage = obj:getAppIcon(appBundleId)
            local screenName = w:screen() and w:screen():name() or ""
            table.insert(windowChoices, {
-                           text = w:title(),
-                           subText = appName .. " — " .. screenName,
+                           text = styledText(w:title(), 0, TITLE_COLOR),
+                           subText = styledText(appName .. " — " .. screenName, -2, SUBTITLE_COLOR, true),
                            uuid = i,
                            image = appImage,
                            wImage = nil,
@@ -403,8 +420,8 @@ function obj:selectApp()
           local appImage = obj:getAppIcon(bundleID)
           local screenName = w:screen() and w:screen():name() or ""
           table.insert(windowChoices, {
-              text = w:title(),
-              subText = appName .. " — " .. screenName,
+              text = styledText(w:title(), 0, TITLE_COLOR),
+              subText = styledText(appName .. " — " .. screenName, -2, SUBTITLE_COLOR, true),
               uuid = i,
               image = appImage,
               wImage = nil,
@@ -444,6 +461,7 @@ function obj:enter_chooser(windowChooser)
     end
   end
 
+  windowChooser:searchSubText(true)
   windowChooser:show()
   obj.modalKeys:enter()
 end
