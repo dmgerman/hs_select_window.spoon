@@ -50,14 +50,13 @@ obj.modalKeys:bind({"shift"}, "tab", function()
         local wid = selectedWin:id()
         if wid then
           obj.imageCache[wid] = nil  -- clear cached thumbnail
-          obj.PrevWindow = nil       -- force regeneration
+          obj.prevWindow = nil       -- force regeneration
         end
       end
     end
 end)
 
 
--- 
 obj.trackChooser = nil    -- timer callback to track the chooser selection
 obj.imageCache = {}       -- cache window thumbnails
 obj.appIconCache = {}     -- cache app icons (keyed by bundleID, never expires)
@@ -171,9 +170,8 @@ local function initWindowFilter()
 end
 
 function obj:findByTitle(t)
-   -- find a window by title.
    for i,v in ipairs(obj.currentWindows) do
-      if string.find(v:title(), t) then
+      if v:application() and string.find(v:title(), t) then
          return v
       end
    end
@@ -194,7 +192,8 @@ end
 
 function obj:focusByApp(appName)
    for i,v in ipairs(obj.currentWindows) do
-      if string.find(v:application():name(), appName) then
+      local app = v:application()
+      if app and string.find(app:name(), appName) then
          v:focus()
          return v
       end
@@ -205,7 +204,8 @@ end
 
 function obj:focusByAppAndTitle(appName, title)
   for i,v in ipairs(obj.currentWindows) do
-    if (v:application():name() == appName) and string.find(v:title(), title) then
+    local app = v:application()
+    if app and (app:name() == appName) and string.find(v:title(), title) then
       v:focus()
       return v
     end
@@ -240,7 +240,6 @@ function obj:appendWindowlessApps(choices, seenBundleIds, excludeBundleId)
                          subText = styledText(bundleId, -2, SUBTITLE_COLOR, true),
                          uuid = "app_" .. bundleId,
                          image = appImage,
-                         wImage = nil,
                          win = nil,
                          app = app})
       end
@@ -273,7 +272,6 @@ function obj:windowChoices(onlyCurrentApp, currentWin)
                            subText = styledText(appName .. " — " .. screenName, -2, SUBTITLE_COLOR, true),
                            uuid = i,
                            image = appImage,
-                           wImage = nil,
                            win=w})
          end
       end
@@ -309,7 +307,7 @@ function obj:_showChooser(fnListWindows, moveToCurrentSpace)
            hs.spaces.moveWindowToSpace(v,
                 hs.spaces.activeSpaceOnScreen(hs.screen.mainScreen())
            )
-           v:moveToScreen(mainScreen)
+           v:moveToScreen(hs.screen.mainScreen())
          end
          focusAndActivate(v)
        elseif choice["app"] then
@@ -425,7 +423,6 @@ function obj:selectApp()
               subText = styledText(appName .. " — " .. screenName, -2, SUBTITLE_COLOR, true),
               uuid = i,
               image = appImage,
-              wImage = nil,
               win=w})
         end
       end
@@ -467,7 +464,7 @@ function obj:enter_chooser(windowChooser)
   obj.modalKeys:enter()
 end
 
-function obj:leave_chooser(chooser)
+function obj:leave_chooser()
   obj.pollChooser:stop()
   obj:showImageOverlay()
   obj.trackChooser = nil
@@ -513,7 +510,6 @@ end
 
 
 function obj:showImageOverlay(image)
-  -- show the image overlay in the bottom right of the screen
   if obj.overlay then
     obj.overlay:delete()
     obj.overlay = nil
@@ -521,30 +517,30 @@ function obj:showImageOverlay(image)
   if not image then
     return
   end
-  -- Get screen dimensions (main screen in this case)
   local screenFrame = hs.screen.mainScreen():frame()
 
-  -- if necessary, resize image to fit a reasonable overlay area 
   local origSize = image:size()
   local h = screenFrame.h * obj.overlayHeightRatio
-  local newSize = nil
+  local w, scale
   if h < origSize.h then
-    local scale = h / origSize.h
-    newSize = hs.geometry.size(origSize.w * scale, h)
+    scale = h / origSize.h
+    w = origSize.w * scale
   else
-    newSize = origSize
+    h = origSize.h
+    w = origSize.w
   end
 
-  -- Position the overlay in the bottom-right corner (adjust as needed)
-  local posX = screenFrame.x + screenFrame.w - newSize.w - 20
-  local posY = screenFrame.y + screenFrame.h - newSize.h - 40
+  local posX = screenFrame.x + screenFrame.w - w - 20
+  local posY = screenFrame.y + screenFrame.h - h - 40
 
-  -- Create the drawing
-  obj.overlay = hs.drawing.image(hs.geometry.rect(posX, posY, newSize.w, newSize.h), image)
-
-  -- Customize appearance
-  obj.overlay:setLevel(hs.drawing.windowLevels.overlay)
-  obj.overlay:setAlpha(0.9)
+  obj.overlay = hs.canvas.new({ x = posX, y = posY, w = w, h = h })
+  obj.overlay:appendElements({
+    type = "image",
+    image = image,
+    imageScaling = "scaleToFit",
+  })
+  obj.overlay:level(hs.canvas.windowLevels.overlay)
+  obj.overlay:alpha(0.9)
   obj.overlay:show()
 end
 
@@ -567,19 +563,19 @@ local function display_currently_selected_window_callback()
     if not selectedWin then
       -- No window (e.g., windowless app) - clear any existing overlay
       obj:showImageOverlay()
-      obj.PrevWindow = nil
+      obj.prevWindow = nil
       return
     end
 
     local wid = selectedWin:id()
-    if wid ~= obj.PrevWindow then
+    if wid ~= obj.prevWindow then
       local wImage = obj.imageCache[wid]
       if not wImage then
         wImage = obj:captureWindowSnapshot(selectedWin)
         obj.imageCache[wid] = wImage
       end
       obj:showImageOverlay(wImage)
-      obj.PrevWindow = wid
+      obj.prevWindow = wid
     end
   end
 end
@@ -604,7 +600,7 @@ function obj:bindHotkeys(mapping)
   }
   -- do it by hand, so we can keep track of the hotkeys
   for i,v in pairs (mapping)do
-    obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], descriptions[i] or ("Window selection [Window] (hs_select_window.spoon:781)"), def[i])
+    obj.hotkeys[i] = hs.hotkey.bind(v[1], v[2], descriptions[i] or "Window selection [hs_select_window]", def[i])
     obj.modalKeys:bind(v[1], v[2], function()
         hs.eventtap.keyStroke({"ctrl"}, "n")
     end)
