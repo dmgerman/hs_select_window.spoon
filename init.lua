@@ -459,6 +459,11 @@ function obj:enter_chooser(windowChooser)
     end
   end
 
+  local screenW = hs.screen.mainScreen():frame().w
+  if screenW > 3000 then
+    windowChooser:width(20)
+  end
+
   windowChooser:searchSubText(true)
   windowChooser:show()
   obj.modalKeys:enter()
@@ -536,7 +541,16 @@ function obj:showImageOverlay(image)
   local chooserW = screenFrame.w * (chooserPct / 100)
   local chooserLeft = screenFrame.x + (screenFrame.w - chooserW) / 2
   local posX = chooserLeft - w
-  local posY = screenFrame.y + 40
+
+  -- Find the chooser window's actual Y position
+  local posY = screenFrame.y + 40 -- fallback
+  for _, w2 in ipairs(hs.window.allWindows()) do
+    local app = w2:application()
+    if app and app:name() == "Hammerspoon" and w2:title() == "Chooser" then
+      posY = w2:frame().y
+      break
+    end
+  end
 
   obj.overlay = hs.canvas.new({ x = posX, y = posY, w = w, h = h })
   obj.overlay:appendElements({
