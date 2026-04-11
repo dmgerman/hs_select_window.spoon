@@ -530,8 +530,13 @@ function obj:showImageOverlay(image)
     w = origSize.w
   end
 
-  local posX = screenFrame.x + screenFrame.w - w - 20
-  local posY = screenFrame.y + screenFrame.h - h - 40
+  -- Position image so its right edge aligns with the chooser's left edge
+  -- chooser:width() returns percentage of screen width; chooser is centered
+  local chooserPct = obj.trackChooser and obj.trackChooser:width() or 40
+  local chooserW = screenFrame.w * (chooserPct / 100)
+  local chooserLeft = screenFrame.x + (screenFrame.w - chooserW) / 2
+  local posX = chooserLeft - w
+  local posY = screenFrame.y + 40
 
   obj.overlay = hs.canvas.new({ x = posX, y = posY, w = w, h = h })
   obj.overlay:appendElements({
@@ -540,7 +545,7 @@ function obj:showImageOverlay(image)
     imageScaling = "scaleToFit",
   })
   obj.overlay:level(hs.canvas.windowLevels.overlay)
-  obj.overlay:alpha(0.9)
+  obj.overlay:alpha(1.0)
   obj.overlay:show()
 end
 
@@ -611,7 +616,6 @@ function obj:bindHotkeys(mapping)
         hs.eventtap.keyStroke({"ctrl"}, "p")
     end)
   end
-
 end
 
 function obj:stop()
