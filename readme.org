@@ -1,95 +1,82 @@
-#+STARTUP: overview
-# make by default the result of a block its standard output
-#+SEQ_TODO: TODO(t) NEXT(n) WAITING(w) SOMEDAY(s) PROJ(p) | DONE(d) CANCELLED(c) APPT(a)
-#+PROPERTY: header-args         :results output
-# i like to be pedantic
-#+PROPERTY: header-args:C       :main no :flags -std=c99 -Wall --pedantic -Werror
-#  use C+++ instead of C++ (L+ means add arguments to language L)
-#+PROPERTY: header-args:C+++    :main no :flags -std=c++17 -Wall --pedantic -Werror
-# specify the default database
-# result:   guarantees the result is typeset as a table
-# colnames: orgmode does not insert column names, force it to do it
-#+PROPERTY: header-args:sqlite  :db /tmp/rip.db :colnames yes :results  table
-# make sure that ^ and _ do not get interpreted, since they are commonly used
-# in programming (specially _)
-#+PROPERTY: header-args:sql   :engine postgresql  :cmdline -h localhost -p 54321  imdb :colnames yes :results  table
-#+PROPERTY: header-args:python   :results output
-#+PROPERTY: header-args:scala    :results output
-#+PROPERTY: header-args:R    :results output
 #+OPTIONS: ^:nil
 
-* Table of contents :TOC:
-- [[#purpose][Purpose:]]
-- [[#example][Example]]
-- [[#how-to--install][How to  install]]
-- [[#how-to-use][How to use]]
-- [[#to-be-done][To be done]]
-- [[#known-bugs][Known bugs]]
+* hs_select_window
 
-* Purpose:
+A Hammerspoon spoon for fast window switching with incremental search and live thumbnail previews.
 
-- jump to any window by selecting part of its name or its application
-- windows are listed in the order they have been active (from most recent)
-- each window is listed by window title and application name
-- supports incremental search
+[[./screenshot.png]]
 
-* Example
+** Features
 
-[[./screenshot.png]]  
-  
-type ema
+- Jump to any window by typing part of its title or application name
+- Windows listed in most-recently-used order
+- Incremental search across window title and application name
+- Live thumbnail preview of the selected window
+- On wide screens (>3000px), the chooser narrows automatically for a cleaner layout
 
-and you get
+** Installation
 
-[[./screenshot-3.png]]
+Clone this repository into your Hammerspoon Spoons directory:
 
-type return and you are sent to the top window
-
-
-* How to  install
-
-I assume you have installed hammerspoon and you have a ~/.hammerspoon/init.lua file
-
-The easiest way is to clone this repository inside your .hammerspoon directory:
-
-#+begin_src bash   :exports both
+#+begin_src bash
 cd ~/.hammerspoon/Spoons
 git clone https://github.com/dmgerman/hs_select_window.spoon.git
 #+end_src
 
-This should create a directory called 
-~/.hammerspoon/Spoons/hs_select_window.spoon with an init.lua file inside
+Then add to your =~/.hammerspoon/init.lua=:
 
-Then modify your ~/.hammerspoon/init.lua file and add the following:
-
-#+begin_src lua   :exports both
+#+begin_src lua
 hs.loadSpoon("hs_select_window")
 
--- customize bindings to your preference
 local SWbindings = {
-   all_windows =  { {"alt"}, "b"},
-   app_windows =  { {"alt", "shift"}, "b"}
-}   
+   all_windows                          = { {"alt"}, "b"},
+   app_windows                          = { {"alt", "shift"}, "b"},
+   all_windows_move_to_current_workspace = { {"alt", "ctrl"}, "b"},
+   first_window_per_app                 = { {"alt", "cmd"}, "b"}
+}
 spoon.hs_select_window:bindHotkeys(SWbindings)
 #+end_src
 
-* How to use
+** Hotkey bindings
 
-This spoon binds the keys:
+| Binding       | Action                                       |
+|---------------+----------------------------------------------|
+| =all_windows= | Show all windows                             |
+| =app_windows= | Show windows of the current application only |
+| =all_windows_move_to_current_workspace= | Select a window and move it to the current workspace |
+| =first_window_per_app= | Show only the first (most recent) window per application |
 
-- option-b:  display a list of all windows
-- shift-option-b: display list of windows of the current application
+** Keyboard shortcuts while the chooser is open
 
-Use either one to select and activate any window. 
+| Key             | Action                                 |
+|-----------------+----------------------------------------|
+| =Tab=           | Toggle thumbnail preview on/off        |
+| =Shift+Tab=     | Force refresh the current thumbnail    |
+| hotkey          | Move to next item (same as Ctrl+n)     |
+| Shift+hotkey    | Move to previous item (same as Ctrl+p) |
 
+** Configuration
 
-Note that the current window does not appear in the list of windows.
+Set these properties after loading the spoon to customize behavior:
 
-* To be done
+#+begin_src lua
+-- Number of rows shown in the chooser (default: 14)
+spoon.hs_select_window.rowsToDisplay = 14
 
-- add functionality to display only windows in the current workspace
+-- Font size for chooser text (nil = system default)
+spoon.hs_select_window.fontSize = nil
 
-* Known bugs
+-- Show thumbnail of selected window (nil = off, toggle with Tab)
+spoon.hs_select_window.showCurrentlySelectedWindow = nil
 
-- None at this point
+-- How often the thumbnail updates, in seconds (default: 0.2)
+spoon.hs_select_window.displayDelay = 0.2
 
+-- Height of thumbnail as a ratio of screen height (default: 0.4)
+spoon.hs_select_window.overlayHeightRatio = 0.4
+
+-- Keep thumbnail cache between chooser invocations (default: false)
+-- When true, thumbnails load faster but may show stale content.
+-- Use Shift+Tab to force refresh.
+spoon.hs_select_window.persistentThumbnailCache = false
+#+end_src
