@@ -492,7 +492,7 @@ function obj:previousWindow()
    return obj.currentWindows[2]
 end
 
-function obj:choosePreviousWindow()
+function obj:selectPreviousWindow()
   if obj.currentWindows[2] then
     focusAndActivate(obj.currentWindows[2])
   end
@@ -609,13 +609,15 @@ function obj:bindHotkeys(mapping)
     all_windows                          = function() self:selectWindow() end,
     all_windows_move_to_current_workspace = function() self:selectWindowAndMove() end,
     app_windows                          = function() self:selectAppWindow() end,
-    first_window_per_app                 = function() self:selectApp() end
+    first_window_per_app                 = function() self:selectApp() end,
+    previous_window                      = function() self:selectPreviousWindow() end,
   }
   local descriptions = {
     all_windows                   = "Select window from all windows [hs_select_window]",
     all_windows_move_to_current_workspace = "Select window and move to current workspace [hs_select_window]",
     app_windows                   = "Select window from current app [hs_select_window]",
-    first_window_per_app          = "Select first window per app [hs_select_window]"
+    first_window_per_app          = "Select first window per app [hs_select_window]",
+    previous_window               = "Select previously focused window [hs_select_window]",
   }
   -- do it by hand, so we can keep track of the hotkeys
   for i,v in pairs (mapping)do

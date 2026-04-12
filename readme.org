@@ -39,12 +39,13 @@ spoon.hs_select_window:bindHotkeys(SWbindings)
 
 ** Hotkey bindings
 
-| Binding       | Action                                       |
-|---------------+----------------------------------------------|
-| =all_windows= | Show all windows                             |
-| =app_windows= | Show windows of the current application only |
-| =all_windows_move_to_current_workspace= | Select a window and move it to the current workspace |
-| =first_window_per_app= | Show only the first (most recent) window per application |
+| Binding                               | Action                                                   |
+|---------------------------------------+----------------------------------------------------------|
+| =all_windows=                           | Show all windows                                         |
+| =app_windows=                           | Show windows of the current application only             |
+| =all_windows_move_to_current_workspace= | Select a window and move it to the current workspace     |
+| =first_window_per_app=                  | Show only the first (most recent) window per application |
+| =previous_window=                       | Select previous window                                   |
 
 ** Keyboard shortcuts while the chooser is open
 
