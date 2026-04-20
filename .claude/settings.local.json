@@ -6,7 +6,9 @@
       "Bash(luac -p /Users/dmg/.hammerspoon/Spoons/hs_select_window.spoon/init.lua)",
       "Bash(lua -e \"loadfile\\(''/Users/dmg/.hammerspoon/Spoons/hs_select_window.spoon/init.lua''\\)\")",
       "Bash(luac -p /Users/dmg/.hammerspoon/Spoons/hs_select_window.spoon/tests/test.lua)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(osascript:*)",
+      "Bash(ls:*)"
     ]
   }
 }
