@@ -4,7 +4,7 @@
 
 local obj={}
 obj.__index = obj
-local log = hs.logger.new("selectWindow", "info")
+local log = hs.logger.new("selectWindow", "warning")
 -- metadata
 
 obj.name = "selectWindow"
