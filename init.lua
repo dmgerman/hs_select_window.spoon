@@ -357,6 +357,10 @@ end
 
 function obj:selectWindow()
   local currentWin = hs.window.focusedWindow()
+  if not currentWin then
+    hs.alert.show("no focused window")
+    return
+  end
   obj:_showChooser(
     function () return obj:windowChoices(false, currentWin) end
   )
@@ -364,6 +368,10 @@ end
 
 function obj:selectWindowAndMove()
   local currentWin = hs.window.focusedWindow()
+  if not currentWin then
+    hs.alert.show("no focused window")
+    return
+  end
   obj:_showChooser(
     function () return obj:windowChoices(false, currentWin) end,
     true
@@ -372,6 +380,10 @@ end
 
 function obj:selectAppWindow()
   local currentWin = hs.window.focusedWindow()
+  if not currentWin then
+    hs.alert.show("no focused window")
+    return
+  end
   local currentApp = currentWin:application()
   local otherWindows = {}
   for _, w in ipairs(obj.currentWindows) do
