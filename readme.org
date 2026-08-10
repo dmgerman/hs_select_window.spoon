@@ -9,10 +9,17 @@ A Hammerspoon spoon for fast window switching with incremental search and live t
 ** Features
 
 - Jump to any window by typing part of its title or application name
+- Live thumbnail preview of the selected window
 - Windows listed in most-recently-used order
 - Incremental search across window title and application name
-- Live thumbnail preview of the selected window
+- Each entry shows the app, screen, and workspace (e.g. =Desktop 2=)
+- Scope any picker to the current workspace, or jump straight to the previous window
 - On wide screens (>3000px), the chooser narrows automatically for a cleaner layout
+
+- Narrow the jump to combinations of:
+  - Current app, 
+  - Current workspace,
+  - Previous window
 
 ** Installation
 
@@ -30,22 +37,32 @@ hs.loadSpoon("hs_select_window")
 
 local SWbindings = {
    all_windows                          = { {"alt"}, "b"},
+   all_windows_ws                       = { {"alt"}, "w"},
    app_windows                          = { {"alt", "shift"}, "b"},
    all_windows_move_to_current_workspace = { {"alt", "ctrl"}, "b"},
-   first_window_per_app                 = { {"alt", "cmd"}, "b"}
+   first_window_per_app                 = { {"alt", "cmd"},   "b"}
 }
 spoon.hs_select_window:bindHotkeys(SWbindings)
 #+end_src
 
 ** Hotkey bindings
 
-| Binding                               | Action                                                   |
-|---------------------------------------+----------------------------------------------------------|
-| =all_windows=                           | Show all windows                                         |
-| =app_windows=                           | Show windows of the current application only             |
-| =all_windows_move_to_current_workspace= | Select a window and move it to the current workspace     |
-| =first_window_per_app=                  | Show only the first (most recent) window per application |
-| =previous_window=                       | Select previous window                                   |
+These are the bindings available, and the public API you can call directly, if necessary.
+
+| Binding                                 | Action                                                      | Function                        |
+|-----------------------------------------+-------------------------------------------------------------+---------------------------------|
+| =all_windows=                           | Show all windows                                            | =selectWindow()=                |
+| =all_windows_ws=                        | Show all windows on the current workspace                   | =selectWindow(true)=            |
+| =app_windows=                           | Show windows of the current application only                | =selectAppWindow()=             |
+| =app_windows_ws=                        | Show current app's windows on the current workspace         | =selectAppWindow(true)=         |
+| =all_windows_move_to_current_workspace= | Select a window and move it to the current workspace        | =selectWindowAndMove()=         |
+| =first_window_per_app=                  | Show only the first (most recent) window per application    | =selectApp()=                   |
+| =previous_window=                       | Select previous window                                      | =selectPreviousWindow()=        |
+| =previous_window_ws=                    | Select previous window on the current workspace             | =selectPreviousWindow(true)=    |
+| =previous_app_window=                   | Select previous window of the current application           | =selectPreviousAppWindow()=     |
+| =previous_app_window_ws=                | Select previous window of the current app on this workspace | =selectPreviousAppWindow(true)= |
+
+Each function is a method on =spoon.hs_select_window=; the =_ws= suffix on a binding narrows it to windows on your current workspace.
 
 ** Keyboard shortcuts while the chooser is open
 
@@ -80,4 +97,7 @@ spoon.hs_select_window.overlayHeightRatio = 0.4
 -- When true, thumbnails load faster but may show stale content.
 -- Use Shift+Tab to force refresh.
 spoon.hs_select_window.persistentThumbnailCache = false
+
+-- Show the window's workspace (e.g. "Desktop 2") in the chooser (default: true)
+spoon.hs_select_window.showWorkspaceInSubText = true
 #+end_src

@@ -32,6 +32,9 @@ obj.displayDelay = 0.2
 -- use Shift+Tab to force refresh when enabled
 obj.persistentThumbnailCache = false
 
+-- append the window's workspace/space name (e.g. "Desktop 2") to the chooser subText
+obj.showWorkspaceInSubText = true
+
 
 -- keep track of hotkeys so we can disable/enable them
 obj.hotkeys = {}
@@ -246,10 +249,89 @@ function obj:appendWindowlessApps(choices, seenBundleIds, excludeBundleId)
    end
 end
 
-function obj:windowChoices(onlyCurrentApp, currentWin)
+-- Build the set of window IDs on the currently focused space.
+-- Iterates windows and calls hs.spaces.windowSpaces(w) per window rather than
+-- hs.spaces.windowsForSpace(space), which triggers a Mission Control flicker.
+local function currentSpaceWindowIdSet()
+   local ids = {}
+   local focused = hs.spaces.focusedSpace()
+   if not focused then return ids end
+   for _, w in ipairs(obj.currentWindows) do
+      local spaces = hs.spaces.windowSpaces(w)
+      if spaces then
+         for _, sid in ipairs(spaces) do
+            if sid == focused then
+               local wid = w:id()
+               if wid then ids[wid] = true end
+               break
+            end
+         end
+      end
+   end
+   return ids
+end
+
+-- Build one chooser row for a window. Consolidates the text/subText/image
+-- shape used by every builder so all choosers render identically.
+-- spaceLabels may be nil or {} to skip the workspace suffix.
+local function windowChoiceRow(w, uuid, spaceLabels)
+   local app = w:application()
+   local appName = (app and app:name()) or '(none)'
+   local appBundleId = app and app:bundleID() or nil
+   local appImage = obj:getAppIcon(appBundleId)
+   local screenName = w:screen() and w:screen():name() or ""
+   local wid = w:id()
+   local spaceName = (wid and spaceLabels and spaceLabels[wid]) or ""
+   local parts = {appName}
+   if screenName ~= "" then table.insert(parts, screenName) end
+   if spaceName  ~= "" then table.insert(parts, spaceName)  end
+   return {
+      text    = styledText(w:title(), 0, TITLE_COLOR),
+      subText = styledText(table.concat(parts, " — "), -2, SUBTITLE_COLOR, true),
+      uuid    = uuid,
+      image   = appImage,
+      win     = w,
+   }
+end
+
+-- Build a {winId -> spaceLabel} map for all tracked windows. Labels are the
+-- 1-based index of the window's first space within its screen (e.g. "Desktop 2").
+-- Uses hs.spaces.allSpaces() (fast, no flicker) + per-window windowSpaces();
+-- deliberately avoids hs.spaces.missionControlSpaceNames() which briefly
+-- activates Mission Control.
+-- Wrapped in pcall so a spaces-API hiccup returns {} rather than crashing.
+local function buildWindowSpaceLabels()
+   local ok, result = pcall(function()
+      local indexBySid = {}
+      for _, spaceIds in pairs(hs.spaces.allSpaces() or {}) do
+         for idx, sid in ipairs(spaceIds) do
+            indexBySid[sid] = idx
+         end
+      end
+      local labels = {}
+      for _, w in ipairs(obj.currentWindows) do
+         local wid = w:id()
+         local spaces = wid and hs.spaces.windowSpaces(w)
+         if spaces and spaces[1] then
+            local idx = indexBySid[spaces[1]]
+            if idx then labels[wid] = "Desktop " .. tostring(idx) end
+         end
+      end
+      return labels
+   end)
+   return ok and result or {}
+end
+
+function obj:windowChoices(opts)
+   opts = opts or {}
+   local onlyCurrentApp   = opts.onlyCurrentApp
+   local onlyCurrentSpace = opts.onlyCurrentSpace
+   local currentWin       = opts.currentWin
    local windowChoices = {}
    local currentApp = currentWin and currentWin:application() or nil
    local appsWithWindows = {}  -- Track which apps have windows
+   local spaceWinIds = onlyCurrentSpace and currentSpaceWindowIdSet() or nil
+   local spaceLabels = obj.showWorkspaceInSubText and buildWindowSpaceLabels() or {}
 
    for i,w in ipairs(obj.currentWindows) do
       -- Skip non-standard windows (tooltips, popups, etc.) and the current window
@@ -264,21 +346,17 @@ function obj:windowChoices(onlyCurrentApp, currentWin)
               appsWithWindows[appBundleId] = true
            end
          end
-         if (not onlyCurrentApp) or (app == currentApp) then
-           local appImage = obj:getAppIcon(appBundleId)
-           local screenName = w:screen() and w:screen():name() or ""
-           table.insert(windowChoices, {
-                           text = styledText(w:title(), 0, TITLE_COLOR),
-                           subText = styledText(appName .. " — " .. screenName, -2, SUBTITLE_COLOR, true),
-                           uuid = i,
-                           image = appImage,
-                           win=w})
+         local appMatch   = (not onlyCurrentApp)   or (app == currentApp)
+         local spaceMatch = (not onlyCurrentSpace) or (spaceWinIds[w:id()] == true)
+         if appMatch and spaceMatch then
+           table.insert(windowChoices, windowChoiceRow(w, i, spaceLabels))
          end
       end
    end
 
-   -- Add running apps without windows (only when not filtering by current app)
-   if not onlyCurrentApp then
+   -- Add running apps without windows only when not filtering. A windowless
+   -- app has no windows here by definition, so a space filter must exclude it.
+   if not onlyCurrentApp and not onlyCurrentSpace then
       local currentBundleId = currentApp and currentApp:bundleID() or nil
       obj:appendWindowlessApps(windowChoices, appsWithWindows, currentBundleId)
    end
@@ -355,14 +433,14 @@ function obj:_showChooser(fnListWindows, moveToCurrentSpace)
    windowChooser:query(nil)
 end
 
-function obj:selectWindow()
+function obj:selectWindow(currentSpaceOnly)
   local currentWin = hs.window.focusedWindow()
   if not currentWin then
     hs.alert.show("no focused window")
     return
   end
   obj:_showChooser(
-    function () return obj:windowChoices(false, currentWin) end
+    function () return obj:windowChoices{onlyCurrentSpace=currentSpaceOnly, currentWin=currentWin} end
   )
 end
 
@@ -373,21 +451,23 @@ function obj:selectWindowAndMove()
     return
   end
   obj:_showChooser(
-    function () return obj:windowChoices(false, currentWin) end,
+    function () return obj:windowChoices{currentWin=currentWin} end,
     true
   )
 end
 
-function obj:selectAppWindow()
+function obj:selectAppWindow(currentSpaceOnly)
   local currentWin = hs.window.focusedWindow()
   if not currentWin then
     hs.alert.show("no focused window")
     return
   end
   local currentApp = currentWin:application()
+  local spaceWinIds = currentSpaceOnly and currentSpaceWindowIdSet() or nil
   local otherWindows = {}
   for _, w in ipairs(obj.currentWindows) do
-    if w ~= currentWin and w:application() == currentApp and w:isStandard() then
+    if w ~= currentWin and w:application() == currentApp and w:isStandard() and
+       (not currentSpaceOnly or spaceWinIds[w:id()]) then
       table.insert(otherWindows, w)
     end
   end
@@ -404,7 +484,7 @@ function obj:selectAppWindow()
   end
 
   obj:_showChooser(
-    function () return obj:windowChoices(true, currentWin) end
+    function () return obj:windowChoices{onlyCurrentApp=true, onlyCurrentSpace=currentSpaceOnly, currentWin=currentWin} end
   )
 end
 
@@ -418,24 +498,17 @@ function obj:selectApp()
     local windowChoices = {}
     local seenPids = {}        -- Track by PID for instance uniqueness
     local seenBundleIds = {}   -- Track by bundleID for appendWindowlessApps
+    local spaceLabels = obj.showWorkspaceInSubText and buildWindowSpaceLabels() or {}
     for i,w in ipairs(obj.currentWindows) do
       -- Skip non-standard windows (tooltips, popups, etc.)
       if w:isStandard() then
         local app = w:application()
-        local appName = (app and app:name()) or '(none)'
-        local bundleID = (app and app:bundleID()) or appName
+        local bundleID = (app and app:bundleID()) or (app and app:name())
         local pid = app and app:pid()
         if pid and pid ~= currentPid and (not seenPids[pid]) then
           seenPids[pid] = true
-          seenBundleIds[bundleID] = true
-          local appImage = obj:getAppIcon(bundleID)
-          local screenName = w:screen() and w:screen():name() or ""
-          table.insert(windowChoices, {
-              text = styledText(w:title(), 0, TITLE_COLOR),
-              subText = styledText(appName .. " — " .. screenName, -2, SUBTITLE_COLOR, true),
-              uuid = i,
-              image = appImage,
-              win=w})
+          if bundleID then seenBundleIds[bundleID] = true end
+          table.insert(windowChoices, windowChoiceRow(w, i, spaceLabels))
         end
       end
     end
@@ -500,13 +573,45 @@ function obj:leave_chooser()
 end
 
 
-function obj:previousWindow()
-   return obj.currentWindows[2]
+function obj:previousWindow(onlyCurrentSpace)
+   if not onlyCurrentSpace then
+      return obj.currentWindows[2]
+   end
+   local spaceWinIds = currentSpaceWindowIdSet()
+   for i = 2, #obj.currentWindows do
+      local w = obj.currentWindows[i]
+      if spaceWinIds[w:id()] then
+         return w
+      end
+   end
+   return nil
 end
 
-function obj:selectPreviousWindow()
-  if obj.currentWindows[2] then
-    focusAndActivate(obj.currentWindows[2])
+function obj:previousAppWindow(onlyCurrentSpace)
+   local currentApp = obj.currentWindows[1] and obj.currentWindows[1]:application()
+   if not currentApp then return nil end
+   local spaceWinIds = onlyCurrentSpace and currentSpaceWindowIdSet() or nil
+   for i = 2, #obj.currentWindows do
+      local w = obj.currentWindows[i]
+      if w:application() == currentApp and
+         (not onlyCurrentSpace or spaceWinIds[w:id()]) then
+         return w
+      end
+   end
+   return nil
+end
+
+function obj:selectPreviousWindow(currentSpaceOnly)
+  local w = obj:previousWindow(currentSpaceOnly)
+  if w then
+    focusAndActivate(w)
+  end
+end
+
+function obj:selectPreviousAppWindow(currentSpaceOnly)
+  local w = obj:previousAppWindow(currentSpaceOnly)
+  if w then
+    focusAndActivate(w)
   end
 end
 
@@ -619,17 +724,27 @@ obj.pollChooser:stop()
 function obj:bindHotkeys(mapping)
   local def = {
     all_windows                          = function() self:selectWindow() end,
+    all_windows_ws                       = function() self:selectWindow(true) end,
     all_windows_move_to_current_workspace = function() self:selectWindowAndMove() end,
     app_windows                          = function() self:selectAppWindow() end,
+    app_windows_ws                       = function() self:selectAppWindow(true) end,
     first_window_per_app                 = function() self:selectApp() end,
     previous_window                      = function() self:selectPreviousWindow() end,
+    previous_window_ws                   = function() self:selectPreviousWindow(true) end,
+    previous_app_window                  = function() self:selectPreviousAppWindow() end,
+    previous_app_window_ws               = function() self:selectPreviousAppWindow(true) end,
   }
   local descriptions = {
     all_windows                   = "Select window from all windows [hs_select_window]",
+    all_windows_ws                = "Select window from windows in current workspace [hs_select_window]",
     all_windows_move_to_current_workspace = "Select window and move to current workspace [hs_select_window]",
     app_windows                   = "Select window from current app [hs_select_window]",
+    app_windows_ws                = "Select window from current app in current workspace [hs_select_window]",
     first_window_per_app          = "Select first window per app [hs_select_window]",
     previous_window               = "Select previously focused window [hs_select_window]",
+    previous_window_ws            = "Select previously focused window in current workspace [hs_select_window]",
+    previous_app_window           = "Select previously focused window in current app [hs_select_window]",
+    previous_app_window_ws        = "Select previously focused window in current app and workspace [hs_select_window]",
   }
   -- do it by hand, so we can keep track of the hotkeys
   for i,v in pairs (mapping)do
