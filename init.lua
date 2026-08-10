@@ -8,7 +8,7 @@ local log = hs.logger.new("selectWindow", "warning")
 -- metadata
 
 obj.name = "selectWindow"
-obj.version = "2.0"
+obj.version = "3.0"
 obj.author = "dmg <dmg@turingmachine.org>"
 obj.homepage = "https://github.com/dmgerman/hs_select_window.spoon"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
